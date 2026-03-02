@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life of Jesus — Interactive Gospel Map</title>
+  <meta name="description" content="Explore the life and ministry of Jesus Christ through an interactive map of the Holy Land, tracing events from all four Gospels." />
+
+  <!-- ArcGIS Maps SDK 5.0 + Calcite -->
+  <link rel="stylesheet" href="https://js.arcgis.com/5.0/@arcgis/core/assets/esri/themes/dark/main.css" />
+  <script type="module" src="https://js.arcgis.com/5.0/"></script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ═══════ Language Selector ═══════ -->
+  <div id="language-selector">
+    <h1 id="lang-title">Life of Jesus</h1>
+    <p id="lang-subtitle">Interactive Gospel Map</p>
+    <div class="lang-buttons">
+      <button class="lang-btn" data-lang="en">English</button>
+      <button class="lang-btn" data-lang="es">Español</button>
+    </div>
+  </div>
+
+  <!-- ═══════ Splash / Loading Screen ═══════ -->
+  <div id="splash-screen">
+    <h2 id="splash-title">Life of Jesus</h2>
+    <p class="splash-verse" id="splash-verse">
+      "I am the way and the truth and the life.<br/>No one comes to the Father except through me."<br/>
+      <span style="color: var(--text-muted); font-size: 0.82rem;">— John 14:6</span>
+    </p>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ Main Application ═══════ -->
+  <calcite-shell>
+
+    <!-- Header -->
+    <div class="app-header" slot="header">
+      <span class="app-title" id="app-title">Life of Jesus</span>
+      <div class="header-actions">
+        <button class="header-btn" id="btn-names" title="Toggle biblical/modern names">
+          <span id="btn-names-label">Names</span>
+        </button>
+        <button class="header-btn" id="btn-scripture" title="Scripture index">
+          <span id="btn-scripture-label">Scripture</span>
+        </button>
+        <button class="header-btn" id="btn-info" title="About this map">
+          <span id="btn-info-label">About</span>
+        </button>
+        <button class="header-btn" id="btn-lang-switch" title="Switch language">
+          EN/ES
+        </button>
+      </div>
+    </div>
+
+    <!-- Phase Chip Bar -->
+    <div class="chip-bar" id="chip-bar" slot="header">
+      <!-- Chips are built dynamically by app.js -->
+    </div>
+
+    <!-- Map -->
+    <div id="viewDiv"></div>
+
+  </calcite-shell>
+
+  <!-- ═══════ Scripture Panel ═══════ -->
+  <div class="scripture-panel" id="scripture-panel">
+    <div class="scripture-header">
+      <h3 id="scripture-panel-title">Scripture Index</h3>
+      <button class="scripture-close" id="scripture-close">&times;</button>
+    </div>
+    <div class="scripture-search">
+      <input type="text" id="scripture-search-input" placeholder="Search (e.g. Matthew 5, John 11:1-44)..." />
+    </div>
+    <div class="scripture-list" id="scripture-list">
+      <!-- Built dynamically -->
+    </div>
+  </div>
+
+  <!-- ═══════ Bottom Sheet (City Detail) ═══════ -->
+  <div class="bottom-sheet-overlay" id="sheet-overlay"></div>
+  <div class="bottom-sheet" id="bottom-sheet">
+    <div class="sheet-handle" id="sheet-handle">
+      <div class="sheet-handle-bar"></div>
+    </div>
+    <div class="sheet-header">
+      <div class="sheet-city-name" id="sheet-city-name"></div>
+      <div class="sheet-city-meta">
+        <span class="sheet-modern-name" id="sheet-modern-name"></span>
+        <span class="sheet-region" id="sheet-region"></span>
+      </div>
+    </div>
+    <div class="sheet-events" id="sheet-events">
+      <!-- Event cards inserted dynamically -->
+    </div>
+  </div>
+
+  <!-- ═══════ About Modal ═══════ -->
+  <div class="modal-overlay" id="modal-about">
+    <div class="modal-content">
+      <h2 id="about-title">About This Map</h2>
+      <p id="about-description">
+        This interactive map traces the life and ministry of Jesus Christ as recorded in the four Gospels — Matthew, Mark, Luke, and John. From his birth in Bethlehem to his ascension from the Mount of Olives, explore the places where Jesus taught, healed, and revealed the Kingdom of God.
+      </p>
+      <div id="about-legend">
+        <!-- Built dynamically -->
+      </div>
+      <p id="about-features" style="margin-top: 16px;">
+        <strong>Features:</strong> Click cities to read event details with Scripture references. Filter by life phase using the chips above the map. Use the Scripture panel to search by book and chapter. Toggle between biblical and modern place names.
+      </p>
+      <p style="font-size: 0.82rem; color: var(--text-muted);">
+        Scripture quotations are from the NIV (English) and RVR1960 (Spanish).
+      </p>
+      <button class="modal-close" id="about-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ═══════ Toast ═══════ -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ═══════ App Modules ═══════ -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
