@@ -3,7 +3,7 @@
 // All geographic, event, and scripture data for the four Gospels
 // ============================================================
 
-export const phases = [
+export const journeys = [
   {
     id: 1,
     name: "Birth & Childhood",
@@ -68,10 +68,10 @@ export const cities = [
     lat: 31.7054,
     lng: 35.2024,
     significance: "major",
-    phases: [1],
+    journeys: [1],
     events: [
       {
-        phase: 1,
+        journey: 1,
         order: 1,
         action: "Birth of Jesus",
         description:
@@ -85,7 +85,7 @@ export const cities = [
           '"She gave birth to her firstborn, a son. She wrapped him in cloths and placed him in a manger, because there was no guest room available for them."'
       },
       {
-        phase: 1,
+        journey: 1,
         order: 2,
         action: "Visit of the Magi",
         description:
@@ -108,10 +108,10 @@ export const cities = [
     lat: 31.7767,
     lng: 35.2332,
     significance: "major",
-    phases: [1, 2, 4],
+    journeys: [1, 2, 4],
     events: [
       {
-        phase: 1,
+        journey: 1,
         order: 3,
         action: "Presentation at the Temple",
         description:
@@ -125,7 +125,7 @@ export const cities = [
           '"My eyes have seen your salvation, which you have prepared in the sight of all nations: a light for revelation to the Gentiles, and the glory of your people Israel."'
       },
       {
-        phase: 1,
+        journey: 1,
         order: 5,
         action: "Boy Jesus at the Temple",
         description:
@@ -139,7 +139,7 @@ export const cities = [
           '"Why were you searching for me?" he asked. "Didn\'t you know I had to be in my Father\'s house?"'
       },
       {
-        phase: 2,
+        journey: 2,
         order: 5,
         action: "Cleansing of the Temple",
         description:
@@ -153,7 +153,7 @@ export const cities = [
           '"Destroy this temple, and I will raise it again in three days."'
       },
       {
-        phase: 2,
+        journey: 2,
         order: 6,
         action: "Nicodemus Visits by Night",
         description:
@@ -167,7 +167,7 @@ export const cities = [
           '"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 5,
         action: "Triumphal Entry",
         description:
@@ -181,7 +181,7 @@ export const cities = [
           '"Hosanna to the Son of David! Blessed is he who comes in the name of the Lord! Hosanna in the highest heaven!"'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 7,
         action: "The Last Supper",
         description:
@@ -195,7 +195,7 @@ export const cities = [
           '"This is my body given for you; do this in remembrance of me… This cup is the new covenant in my blood, which is poured out for you."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 9,
         action: "Trial before Pilate",
         description:
@@ -209,7 +209,7 @@ export const cities = [
           '"My kingdom is not of this world. If it were, my servants would fight to prevent my arrest. But now my kingdom is from another place."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 10,
         action: "Crucifixion & Death",
         description:
@@ -223,7 +223,7 @@ export const cities = [
           '"It is finished." With that, he bowed his head and gave up his spirit.'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 11,
         action: "Resurrection",
         description:
@@ -246,10 +246,10 @@ export const cities = [
     lat: 30.85,
     lng: 32.35,
     significance: "moderate",
-    phases: [1],
+    journeys: [1],
     events: [
       {
-        phase: 1,
+        journey: 1,
         order: 4,
         action: "Flight to Egypt",
         description:
@@ -272,10 +272,10 @@ export const cities = [
     lat: 32.6996,
     lng: 35.3040,
     significance: "major",
-    phases: [1, 2, 3],
+    journeys: [1, 2, 3],
     events: [
       {
-        phase: 1,
+        journey: 1,
         order: 6,
         action: "Childhood in Nazareth",
         description:
@@ -289,7 +289,7 @@ export const cities = [
           '"He went and lived in a town called Nazareth. So was fulfilled what was said through the prophets, that he would be called a Nazarene."'
       },
       {
-        phase: 2,
+        journey: 2,
         order: 8,
         action: "Rejected at Nazareth",
         description:
@@ -303,7 +303,7 @@ export const cities = [
           '"Truly I tell you, no prophet is accepted in his hometown."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 7,
         action: "Second Rejection at Nazareth",
         description:
@@ -328,10 +328,10 @@ export const cities = [
     lat: 31.8372,
     lng: 35.5508,
     significance: "major",
-    phases: [2],
+    journeys: [2],
     events: [
       {
-        phase: 2,
+        journey: 2,
         order: 1,
         action: "Baptism of Jesus",
         description:
@@ -354,10 +354,10 @@ export const cities = [
     lat: 31.65,
     lng: 35.35,
     significance: "moderate",
-    phases: [2],
+    journeys: [2],
     events: [
       {
-        phase: 2,
+        journey: 2,
         order: 2,
         action: "Temptation by Satan",
         description:
@@ -380,10 +380,10 @@ export const cities = [
     lat: 32.7500,
     lng: 35.3434,
     significance: "moderate",
-    phases: [2],
+    journeys: [2],
     events: [
       {
-        phase: 2,
+        journey: 2,
         order: 3,
         action: "Water into Wine",
         description:
@@ -397,7 +397,7 @@ export const cities = [
           '"What Jesus did here in Cana of Galilee was the first of the signs through which he revealed his glory; and his disciples believed in him."'
       },
       {
-        phase: 2,
+        journey: 2,
         order: 4,
         action: "Healing the Official's Son",
         description:
@@ -420,10 +420,10 @@ export const cities = [
     lat: 32.8814,
     lng: 35.5753,
     significance: "major",
-    phases: [2, 3],
+    journeys: [2, 3],
     events: [
       {
-        phase: 2,
+        journey: 2,
         order: 9,
         action: "Ministry Headquarters Established",
         description:
@@ -437,7 +437,7 @@ export const cities = [
           '"Repent, for the kingdom of heaven has come near."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 1,
         action: "Teaching with Authority",
         description:
@@ -451,7 +451,7 @@ export const cities = [
           '"The people were amazed at his teaching, because he taught them as one who had authority, not as the teachers of the law."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 2,
         action: "Healing the Centurion's Servant",
         description:
@@ -465,7 +465,7 @@ export const cities = [
           '"Truly I tell you, I have not found anyone in Israel with such great faith."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 3,
         action: "Healing Peter's Mother-in-Law",
         description:
@@ -488,10 +488,10 @@ export const cities = [
     lat: 32.2142,
     lng: 35.2848,
     significance: "moderate",
-    phases: [2],
+    journeys: [2],
     events: [
       {
-        phase: 2,
+        journey: 2,
         order: 7,
         action: "Woman at the Well",
         description:
@@ -516,10 +516,10 @@ export const cities = [
     lat: 32.8810,
     lng: 35.5550,
     significance: "moderate",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 4,
         action: "Sermon on the Mount",
         description:
@@ -542,10 +542,10 @@ export const cities = [
     lat: 32.6330,
     lng: 35.3494,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 5,
         action: "Raising the Widow's Son",
         description:
@@ -568,10 +568,10 @@ export const cities = [
     lat: 32.82,
     lng: 35.58,
     significance: "major",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 6,
         action: "Calming the Storm",
         description:
@@ -585,7 +585,7 @@ export const cities = [
           '"He got up, rebuked the wind and said to the waves, "Quiet! Be still!" Then the wind died down and it was completely calm."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 9,
         action: "Walking on Water",
         description:
@@ -599,7 +599,7 @@ export const cities = [
           '"Lord, if it\'s you," Peter replied, "tell me to come to you on the water." "Come," he said.'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 15,
         action: "Calling of the First Disciples",
         description:
@@ -622,10 +622,10 @@ export const cities = [
     lat: 32.6531,
     lng: 35.6832,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 8,
         action: "Healing the Demoniacs",
         description:
@@ -648,10 +648,10 @@ export const cities = [
     lat: 32.9070,
     lng: 35.6300,
     significance: "moderate",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 10,
         action: "Feeding the Five Thousand",
         description:
@@ -665,7 +665,7 @@ export const cities = [
           '"Gather the pieces that are left over. Let nothing be wasted."'
       },
       {
-        phase: 3,
+        journey: 3,
         order: 11,
         action: "Healing a Blind Man",
         description:
@@ -688,10 +688,10 @@ export const cities = [
     lat: 32.9090,
     lng: 35.5680,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 16,
         action: "Woe Pronounced",
         description:
@@ -714,10 +714,10 @@ export const cities = [
     lat: 32.8390,
     lng: 35.5150,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 17,
         action: "Departure by Boat",
         description:
@@ -740,10 +740,10 @@ export const cities = [
     lat: 33.2705,
     lng: 35.1955,
     significance: "moderate",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 12,
         action: "Syrophoenician Woman's Faith",
         description:
@@ -766,10 +766,10 @@ export const cities = [
     lat: 33.5572,
     lng: 35.3716,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 13,
         action: "Northern Extent of Ministry",
         description:
@@ -792,10 +792,10 @@ export const cities = [
     lat: 32.7800,
     lng: 35.6600,
     significance: "minor",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 14,
         action: "Healing the Deaf-Mute Man",
         description:
@@ -818,10 +818,10 @@ export const cities = [
     lat: 33.2478,
     lng: 35.6936,
     significance: "moderate",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 18,
         action: "Peter's Confession",
         description:
@@ -844,10 +844,10 @@ export const cities = [
     lat: 32.6867,
     lng: 35.3931,
     significance: "moderate",
-    phases: [3],
+    journeys: [3],
     events: [
       {
-        phase: 3,
+        journey: 3,
         order: 19,
         action: "The Transfiguration",
         description:
@@ -872,10 +872,10 @@ export const cities = [
     lat: 32.08,
     lng: 35.57,
     significance: "minor",
-    phases: [4],
+    journeys: [4],
     events: [
       {
-        phase: 4,
+        journey: 4,
         order: 1,
         action: "Teaching Beyond the Jordan",
         description:
@@ -898,10 +898,10 @@ export const cities = [
     lat: 31.7650,
     lng: 35.2625,
     significance: "moderate",
-    phases: [4],
+    journeys: [4],
     events: [
       {
-        phase: 4,
+        journey: 4,
         order: 2,
         action: "Raising of Lazarus",
         description:
@@ -915,7 +915,7 @@ export const cities = [
           '"I am the resurrection and the life. The one who believes in me will live, even though they die."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 3,
         action: "Anointing by Mary",
         description:
@@ -938,10 +938,10 @@ export const cities = [
     lat: 31.8667,
     lng: 35.4500,
     significance: "moderate",
-    phases: [4],
+    journeys: [4],
     events: [
       {
-        phase: 4,
+        journey: 4,
         order: 4,
         action: "Blind Bartimaeus Healed",
         description:
@@ -955,7 +955,7 @@ export const cities = [
           '"What do you want me to do for you?" "Rabbi, I want to see." "Go," said Jesus, "your faith has healed you."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 4,
         action: "Zacchaeus the Tax Collector",
         description:
@@ -978,10 +978,10 @@ export const cities = [
     lat: 31.7784,
     lng: 35.2500,
     significance: "major",
-    phases: [4],
+    journeys: [4],
     events: [
       {
-        phase: 4,
+        journey: 4,
         order: 6,
         action: "Olivet Discourse",
         description:
@@ -995,7 +995,7 @@ export const cities = [
           '"Therefore keep watch, because you do not know on what day your Lord will come."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 8,
         action: "Agony in Gethsemane",
         description:
@@ -1009,7 +1009,7 @@ export const cities = [
           '"My Father, if it is possible, may this cup be taken from me. Yet not as I will, but as you will."'
       },
       {
-        phase: 4,
+        journey: 4,
         order: 12,
         action: "The Ascension",
         description:
@@ -1032,10 +1032,10 @@ export const cities = [
     lat: 31.8413,
     lng: 34.9789,
     significance: "minor",
-    phases: [4],
+    journeys: [4],
     events: [
       {
-        phase: 4,
+        journey: 4,
         order: 13,
         action: "Road to Emmaus",
         description:
@@ -1054,7 +1054,7 @@ export const cities = [
 
 export const routes = [
   {
-    phase: 1,
+    journey: 1,
     outbound: [
       [35.304, 32.700],  // Nazareth
       [35.25, 32.40],    // through Jezreel Valley
@@ -1083,7 +1083,7 @@ export const routes = [
     ]
   },
   {
-    phase: 2,
+    journey: 2,
     outbound: [
       [35.304, 32.700],  // Nazareth
       [35.40, 32.55],    // through valley
@@ -1103,7 +1103,7 @@ export const routes = [
     returnPath: null
   },
   {
-    phase: 3,
+    journey: 3,
     outbound: [
       [35.58, 32.88],    // Capernaum
       [35.555, 32.881],  // Mount of Beatitudes
@@ -1126,7 +1126,7 @@ export const routes = [
     returnPath: null
   },
   {
-    phase: 4,
+    journey: 4,
     outbound: [
       [35.58, 32.88],    // Capernaum
       [35.55, 32.50],    // south through Jordan Valley

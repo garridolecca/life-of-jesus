@@ -1,830 +1,1045 @@
-// ============================================================
-// app.js — Life of Jesus: Map Application
-// ArcGIS-powered interactive map with city markers, routes,
-// scripture panel, bottom sheet, and bilingual support
-// ============================================================
+/**
+ * Life of Jesus — Main Application
+ * ArcGIS Maps SDK for JavaScript 5.0
+ *
+ * CONFIGURATION: To use Esri's premium basemaps (e.g. Human Geography),
+ * get a free API key at https://developers.arcgis.com/ and paste it below.
+ * Without a key, the app uses CartoDB Positron tiles (light gray, no key required).
+ */
+const ARCGIS_API_KEY = ""; // Paste your key here
 
-import { phases, cities, routes, scriptureIndex, allChapters } from "./data.js";
 import {
-  getLang, setLang, t, phaseText, cityText, eventText,
-  displayVerse, displayChapter, geoLabels
+  cities,
+  journeys,
+  routes,
+  scriptureIndex,
+  allChapters,
+} from "./data.js";
+
+import {
+  lang,
+  setLang,
+  t,
+  journeyText,
+  cityText,
+  eventText,
+  displayVerse,
+  displayChapter,
 } from "./i18n.js";
 
-// ── Optional ArcGIS API key (leave empty for CartoDB fallback) ──
-const ARCGIS_API_KEY = "";
+// ============================================================
+// DOM references available immediately
+// ============================================================
+const langSelector = document.getElementById("langSelector");
+const splash = document.getElementById("splash");
+const loaderBar = document.querySelector(".splash-loader-bar");
 
-// ── State ────────────────────────────────────────────────
-let activePhase = "all";         // "all" or integer 1-4
-let showBiblicalNames = true;
-let selectedCity = null;
-let selectedChapter = null;
+// ============================================================
+// Custom Modal Helpers (replace Calcite modals)
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.remove("hidden");
+}
 
-// ── ArcGIS modules (loaded dynamically) ──────────────────
-let Map, MapView, GraphicsLayer, Graphic, Point, Polyline;
-let SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol;
-let WebTileLayer, Basemap, esriConfig, reactiveUtils;
+function closeModal(id) {
+  document.getElementById(id).classList.add("hidden");
+}
 
-// ── Layers & View ────────────────────────────────────────
-let view, geoLayer, routeLayer, cityLayer, labelLayer;
-
-// ══════════════════════════════════════════════════════════
-// LANGUAGE SELECTOR
-// ══════════════════════════════════════════════════════════
-document.querySelectorAll(".lang-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    setLang(btn.dataset.lang);
-    document.getElementById("language-selector").style.display = "none";
-    startApp();
+// Close modals on backdrop click
+document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.add("hidden");
   });
 });
 
-// ══════════════════════════════════════════════════════════
-// APP INITIALIZATION
-// ══════════════════════════════════════════════════════════
-async function startApp() {
-  const splash = document.getElementById("splash-screen");
-  splash.classList.add("active");
-  updateSplash();
-  updateUIStrings();
+// Close buttons
+document.getElementById("closeInfo").addEventListener("click", () => closeModal("infoOverlay"));
+document.getElementById("closeDonate").addEventListener("click", () => closeModal("donateOverlay"));
 
-  const fill = document.getElementById("progress-fill");
-  fill.style.width = "20%";
-
-  try {
-    // Load ArcGIS modules
-    [
-      Map, MapView, GraphicsLayer, Graphic, Point, Polyline,
-      SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol,
-      WebTileLayer, Basemap, esriConfig, reactiveUtils
-    ] = await Promise.all([
-      $arcgis.import("esri/Map"),
-      $arcgis.import("esri/views/MapView"),
-      $arcgis.import("esri/layers/GraphicsLayer"),
-      $arcgis.import("esri/Graphic"),
-      $arcgis.import("esri/geometry/Point"),
-      $arcgis.import("esri/geometry/Polyline"),
-      $arcgis.import("esri/symbols/SimpleMarkerSymbol"),
-      $arcgis.import("esri/symbols/SimpleLineSymbol"),
-      $arcgis.import("esri/symbols/TextSymbol"),
-      $arcgis.import("esri/layers/WebTileLayer"),
-      $arcgis.import("esri/Basemap"),
-      $arcgis.import("esri/config"),
-      $arcgis.import("esri/core/reactiveUtils")
-    ]);
-
-    fill.style.width = "60%";
-
-    if (ARCGIS_API_KEY) {
-      esriConfig.apiKey = ARCGIS_API_KEY;
-    }
-
-    await initMap();
-    fill.style.width = "90%";
-
-    buildChipBar();
-    bindUIEvents();
-    buildAboutLegend();
-    refresh();
-
-    fill.style.width = "100%";
-    setTimeout(() => {
-      splash.classList.remove("active");
-      splash.style.display = "none";
-    }, 400);
-  } catch (err) {
-    console.error("Failed to initialize:", err);
-    fill.style.width = "100%";
-    fill.style.background = "#A34B4B";
-  }
+// ============================================================
+// Donate & Info — always available (no ArcGIS dependency)
+// ============================================================
+function fillDonateModal() {
+  document.getElementById("donateModalTitle").textContent = t("donateTitle");
+  document.getElementById("donateText").textContent = t("donateText");
+  document.getElementById("donateBtnLabel").textContent = t("donateButton") + " via Venmo";
+  document.getElementById("donateQrLabel").textContent =
+    lang === "es" ? "O escanea este codigo QR:" : "Or scan this QR code:";
+  document.getElementById("donateEmailLabel").textContent = t("donateEmailLabel");
 }
 
-// ══════════════════════════════════════════════════════════
-// MAP INITIALIZATION
-// ══════════════════════════════════════════════════════════
-async function initMap() {
-  geoLayer = new GraphicsLayer();
-  routeLayer = new GraphicsLayer();
-  cityLayer = new GraphicsLayer();
-  labelLayer = new GraphicsLayer();
+function fillInfoModal() {
+  document.getElementById("infoModalTitle").textContent = t("infoTitle");
+  const content = document.getElementById("infoModalContent");
+  const legendItems = journeys
+    .map(
+      (j) =>
+        `<div class="legend-item"><span class="legend-line" style="background:${j.hexColor}"></span>${journeyText(j.id, "name")} (${journeyText(j.id, "dateRange")})</div>`
+    )
+    .join("");
+  content.innerHTML = `
+    <p>${t("infoDescription")}</p>
+    <div class="info-legend">
+      <h4>${t("infoLegendTitle")}</h4>
+      ${legendItems}
+    </div>
+    <div class="info-features">
+      <h4>${t("infoFeaturesTitle")}</h4>
+      <ul>
+        <li>${t("infoFeature1")}</li>
+        <li>${t("infoFeature2")}</li>
+        <li>${t("infoFeature3")}</li>
+        <li>${t("infoFeature4")}</li>
+        <li>${t("infoFeature5")}</li>
+      </ul>
+    </div>
+    <div class="info-verse">${t("infoVerse")}</div>
+  `;
+}
 
-  let basemap;
-  if (ARCGIS_API_KEY) {
-    basemap = "arcgis/human-geography-dark";
-  } else {
-    const tileLayer = new WebTileLayer({
-      urlTemplate:
-        "https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
-      copyright: "CartoDB"
-    });
-    basemap = new Basemap({ baseLayers: [tileLayer] });
+document.getElementById("btnDonate").addEventListener("click", () => {
+  fillDonateModal();
+  openModal("donateOverlay");
+});
+
+document.getElementById("btnInfo").addEventListener("click", () => {
+  fillInfoModal();
+  openModal("infoOverlay");
+});
+
+// ============================================================
+// Language Selector Flow (initial launch)
+// ============================================================
+document.querySelectorAll(".lang-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const chosenLang = btn.dataset.lang;
+    setLang(chosenLang);
+
+    // Transition: hide language selector -> show splash
+    langSelector.classList.add("hidden");
+    splash.classList.remove("hidden");
+
+    // Apply translations to splash
+    document.getElementById("splashTitle").textContent = t("appTitle");
+    document.getElementById("splashSubtitle").textContent = t("appSubtitle");
+    document.getElementById("splashVerse").textContent = t("splashVerse");
+    document.getElementById("splashRef").textContent = "— " + t("splashVerseRef");
+
+    // Start the map loading
+    initMap();
+  });
+});
+
+// ============================================================
+// Splash helpers
+// ============================================================
+let progress = 0;
+let progressInterval;
+
+function startProgress() {
+  progressInterval = setInterval(() => {
+    progress += Math.random() * 12;
+    if (progress > 90) progress = 90;
+    loaderBar.style.width = progress + "%";
+  }, 250);
+}
+
+function dismissSplash() {
+  clearInterval(progressInterval);
+  loaderBar.style.width = "100%";
+  setTimeout(() => splash.classList.add("hidden"), 500);
+}
+
+function showError(msg) {
+  clearInterval(progressInterval);
+  const el = document.createElement("p");
+  el.style.cssText = "color:#A34B4B;font-size:13px;margin-top:1rem;";
+  el.textContent = msg;
+  document.querySelector(".splash-content").appendChild(el);
+}
+
+// ============================================================
+// Main init — called after language is chosen
+// ============================================================
+let mapInitialized = false;
+
+async function initMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+
+  startProgress();
+
+  // Safety: dismiss splash after 15s no matter what
+  setTimeout(() => {
+    if (!splash.classList.contains("hidden")) {
+      console.warn("Splash timeout — forcing dismiss");
+      dismissSplash();
+    }
+  }, 15000);
+
+  // Apply all i18n to the UI
+  applyTranslations();
+
+  // ============================================================
+  // ArcGIS Module Imports via $arcgis.import()
+  // ============================================================
+  let Map, MapView, GraphicsLayer, Graphic, Point, Polyline,
+    SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol,
+    WebTileLayer, Basemap, esriConfig, reactiveUtils;
+
+  try {
+    [
+      esriConfig,
+      Map,
+      MapView,
+      GraphicsLayer,
+      Graphic,
+      Point,
+      Polyline,
+      SimpleMarkerSymbol,
+      SimpleLineSymbol,
+      TextSymbol,
+      WebTileLayer,
+      Basemap,
+      reactiveUtils,
+    ] = await $arcgis.import([
+      "@arcgis/core/config.js",
+      "@arcgis/core/Map.js",
+      "@arcgis/core/views/MapView.js",
+      "@arcgis/core/layers/GraphicsLayer.js",
+      "@arcgis/core/Graphic.js",
+      "@arcgis/core/geometry/Point.js",
+      "@arcgis/core/geometry/Polyline.js",
+      "@arcgis/core/symbols/SimpleMarkerSymbol.js",
+      "@arcgis/core/symbols/SimpleLineSymbol.js",
+      "@arcgis/core/symbols/TextSymbol.js",
+      "@arcgis/core/layers/WebTileLayer.js",
+      "@arcgis/core/Basemap.js",
+      "@arcgis/core/core/reactiveUtils.js",
+    ]);
+  } catch (err) {
+    console.error("Failed to load ArcGIS modules:", err);
+    showError(lang === "es"
+      ? "Error al cargar el mapa. Verifica tu conexion."
+      : "Failed to load map SDK. Check your connection and refresh.");
+    throw err;
   }
 
+  // ============================================================
+  // API Key & Basemap
+  // ============================================================
+  let mapBasemap;
+
+  if (ARCGIS_API_KEY) {
+    esriConfig.apiKey = ARCGIS_API_KEY;
+    mapBasemap = "arcgis/human-geography";
+  } else {
+    // CartoDB Positron WITH all labels — full detail at every zoom level
+    const cartoLayer = new WebTileLayer({
+      urlTemplate: "https://{subDomain}.basemaps.cartocdn.com/light_all/{level}/{col}/{row}@2x.png",
+      subDomains: ["a", "b", "c", "d"],
+      copyright: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    });
+    mapBasemap = new Basemap({ baseLayers: [cartoLayer] });
+  }
+
+  // ============================================================
+  // State
+  // ============================================================
+  let activeJourney = "all";
+  let showBiblicalNames = true;
+  let selectedCity = null;
+  let selectedChapter = null;
+
+  // ============================================================
+  // Layers
+  // ============================================================
+  const geoLayer = new GraphicsLayer({ title: "GeoLabels" });
+  const routeLayer = new GraphicsLayer({ title: "Routes" });
+  const cityLayer = new GraphicsLayer({ title: "Cities" });
+  const labelLayer = new GraphicsLayer({ title: "Labels" });
+
+  // ============================================================
+  // Geographic Reference Labels (seas, regions for the Holy Land)
+  // ============================================================
+  const geoLabels = [
+    // Water bodies — italic style
+    { en: "Mediterranean Sea", es: "Mar Mediterraneo", lat: 33.5, lng: 33.0, size: 16, italic: true, color: [70, 100, 140] },
+    { en: "Sea of Galilee", es: "Mar de Galilea", lat: 32.82, lng: 35.52, size: 10, italic: true, color: [70, 100, 140] },
+    { en: "Dead Sea", es: "Mar Muerto", lat: 31.5, lng: 35.48, size: 10, italic: true, color: [70, 100, 140] },
+    { en: "Red Sea", es: "Mar Rojo", lat: 29.5, lng: 33.0, size: 12, italic: true, color: [70, 100, 140] },
+    { en: "Jordan River", es: "Rio Jordan", lat: 32.35, lng: 35.58, size: 9, italic: true, color: [70, 100, 140] },
+    // Regions — normal style
+    { en: "GALILEE", es: "GALILEA", lat: 32.78, lng: 35.25, size: 13, color: [100, 90, 80] },
+    { en: "SAMARIA", es: "SAMARIA", lat: 32.25, lng: 35.15, size: 12, color: [100, 90, 80] },
+    { en: "JUDEA", es: "JUDEA", lat: 31.65, lng: 35.05, size: 13, color: [100, 90, 80] },
+    { en: "PEREA", es: "PEREA", lat: 32.0, lng: 35.70, size: 11, color: [100, 90, 80] },
+    { en: "DECAPOLIS", es: "DECAPOLIS", lat: 32.60, lng: 35.85, size: 11, color: [100, 90, 80] },
+    { en: "PHOENICIA", es: "FENICIA", lat: 33.45, lng: 35.15, size: 11, color: [100, 90, 80] },
+    { en: "IDUMEA", es: "IDUMEA", lat: 31.25, lng: 34.80, size: 10, color: [100, 90, 80] },
+    { en: "EGYPT", es: "EGIPTO", lat: 30.50, lng: 31.50, size: 14, color: [100, 90, 80] },
+    { en: "SINAI", es: "SINAI", lat: 30.20, lng: 33.50, size: 11, color: [100, 90, 80] },
+  ];
+
+  function drawGeoLabels() {
+    geoLayer.removeAll();
+    // Skip geo labels if using Esri basemap (it has its own labels)
+    if (ARCGIS_API_KEY) return;
+
+    geoLabels.forEach((geo) => {
+      const text = lang === "es" ? geo.es : geo.en;
+      geoLayer.add(
+        new Graphic({
+          geometry: new Point({ longitude: geo.lng, latitude: geo.lat }),
+          symbol: new TextSymbol({
+            text,
+            color: [...geo.color, 190],
+            // Large opaque halo to mask basemap labels underneath
+            haloColor: [240, 237, 232, 255],
+            haloSize: 3,
+            font: {
+              size: geo.size,
+              family: "Avenir Next LT Pro",
+              weight: "bold",
+              style: geo.italic ? "italic" : "normal",
+            },
+            horizontalAlignment: "center",
+            verticalAlignment: "middle",
+            lineWidth: 200,
+          }),
+        })
+      );
+    });
+  }
+
+  // ============================================================
+  // Map & View
+  // ============================================================
   const map = new Map({
-    basemap,
-    layers: [geoLayer, routeLayer, cityLayer, labelLayer]
+    basemap: mapBasemap,
+    layers: [geoLayer, routeLayer, cityLayer, labelLayer],
   });
 
-  view = new MapView({
+  const view = new MapView({
     container: "viewDiv",
     map,
     center: [35.0, 31.8],
     zoom: 7,
-    constraints: { minZoom: 5, maxZoom: 15 },
-    ui: { components: [] },
-    popup: { autoOpenEnabled: false }
+    constraints: { minZoom: 3, maxZoom: 12 },
+    popup: { autoOpenEnabled: false },
+    ui: { components: ["zoom"] },
+    navigation: {
+      mouseWheelZoomEnabled: true,
+      browserTouchPanEnabled: true,
+    },
   });
 
-  await view.when();
+  view.ui.move("zoom", "bottom-right");
 
-  // Click handler
-  view.on("click", async (event) => {
-    const response = await view.hitTest(event);
-    const hit = response.results.find(
-      (r) => r.graphic?.layer === cityLayer && r.graphic.attributes?.cityId
-    );
-    if (hit) {
-      const city = cities.find((c) => c.id === hit.graphic.attributes.cityId);
-      if (city) selectCity(city);
-    } else {
-      closeBottomSheet();
-    }
+  view.when(dismissSplash).catch((err) => {
+    console.error("MapView failed:", err);
+    showError(lang === "es"
+      ? "El mapa no pudo cargarse."
+      : "Map failed to load. You may need an ArcGIS API key.");
+    dismissSplash();
   });
-}
 
-// ══════════════════════════════════════════════════════════
-// DRAWING FUNCTIONS
-// ══════════════════════════════════════════════════════════
-
-function refresh() {
-  drawGeoLabels();
-  drawRoutes();
-  drawCities();
-}
-
-// ── Geographic Labels ────────────────────────────────────
-function drawGeoLabels() {
-  geoLayer.removeAll();
-  if (ARCGIS_API_KEY) return; // ArcGIS basemap has its own labels
-
-  const lang = getLang();
-  const labels = geoLabels[lang] || geoLabels.en;
-
-  // Seas (blue, italic)
-  for (const sea of labels.seas) {
-    geoLayer.add(
-      new Graphic({
-        geometry: new Point({ longitude: sea.lng, latitude: sea.lat }),
-        symbol: new TextSymbol({
-          text: sea.name,
-          color: [100, 140, 180, 0.6],
-          font: { size: sea.size, family: "Inter", style: "italic" },
-          haloColor: [26, 17, 25, 0.9],
-          haloSize: 2
-        })
-      })
-    );
+  // ============================================================
+  // Drawing Helpers
+  // ============================================================
+  function getJourneyColor(journeyId) {
+    const j = journeys.find((j) => j.id === journeyId);
+    return j ? j.color : [150, 150, 150];
   }
 
-  // Regions (brown, uppercase)
-  for (const region of labels.regions) {
-    geoLayer.add(
-      new Graphic({
-        geometry: new Point({ longitude: region.lng, latitude: region.lat }),
-        symbol: new TextSymbol({
-          text: region.name,
-          color: [160, 130, 100, 0.45],
-          font: { size: region.size, family: "Inter", weight: "bold" },
-          haloColor: [26, 17, 25, 0.9],
-          haloSize: 2
-        })
-      })
-    );
+  function getJourneyHex(journeyId) {
+    const j = journeys.find((j) => j.id === journeyId);
+    return j ? j.hexColor : "#999";
   }
-}
 
-// ── Routes ───────────────────────────────────────────────
-function drawRoutes() {
-  routeLayer.removeAll();
+  function getCitySize(significance) {
+    switch (significance) {
+      case "major": return 18;
+      case "moderate": return 15;
+      default: return 12;
+    }
+  }
 
-  for (const route of routes) {
-    if (activePhase !== "all" && route.phase !== activePhase) continue;
+  function getCityOutlineWidth(significance) {
+    return significance === "major" ? 2.5 : 2;
+  }
 
-    const phase = phases.find((p) => p.id === route.phase);
-    if (!phase) continue;
+  function getCityStopNumber(city) {
+    if (activeJourney === "all") {
+      const event = city.events[0];
+      return event ? event.order : null;
+    }
+    const event = city.events.find((e) => e.journey === activeJourney);
+    return event ? event.order : null;
+  }
 
-    const color = [...phase.color, 220];
-    const dimColor = [...phase.color, activePhase === "all" ? 160 : 220];
+  function getStopJourneyColor(city) {
+    if (activeJourney === "all") {
+      return getJourneyColor(city.journeys[0]);
+    }
+    return getJourneyColor(activeJourney);
+  }
 
-    // Outbound (solid)
-    if (route.outbound) {
-      routeLayer.add(
-        new Graphic({
-          geometry: new Polyline({
-            paths: [route.outbound.map(([lng, lat]) => [lng, lat])]
-          }),
-          symbol: new SimpleLineSymbol({
-            color: dimColor,
-            width: activePhase === "all" ? 2.5 : 3,
-            style: "solid"
+  // ============================================================
+  // Draw Routes — hides non-active journeys completely
+  // ============================================================
+  function drawRoutes() {
+    routeLayer.removeAll();
+
+    routes.forEach((route) => {
+      const journey = journeys.find((j) => j.id === route.journey);
+      if (!journey) return;
+
+      // Completely hide non-active journeys
+      if (activeJourney !== "all" && activeJourney !== route.journey) return;
+
+      // Outbound — solid, 3px, round caps
+      if (route.outbound && route.outbound.length > 1) {
+        routeLayer.add(
+          new Graphic({
+            geometry: new Polyline({ paths: [route.outbound] }),
+            symbol: new SimpleLineSymbol({
+              color: [...journey.color, 220],
+              width: 3,
+              style: "solid",
+              cap: "round",
+              join: "round",
+            }),
+            attributes: { journey: route.journey, type: "outbound" },
           })
-        })
-      );
-    }
+        );
+      }
 
-    // Return (dashed)
-    if (route.returnPath) {
-      routeLayer.add(
-        new Graphic({
-          geometry: new Polyline({
-            paths: [route.returnPath.map(([lng, lat]) => [lng, lat])]
-          }),
-          symbol: new SimpleLineSymbol({
-            color: [...phase.color, 150],
-            width: activePhase === "all" ? 2 : 2.5,
-            style: "dash"
+      // Return — dashed, 2.5px, round caps
+      if (route.returnPath && route.returnPath.length > 1) {
+        routeLayer.add(
+          new Graphic({
+            geometry: new Polyline({ paths: [route.returnPath] }),
+            symbol: new SimpleLineSymbol({
+              color: [...journey.color, 180],
+              width: 2.5,
+              style: "dash",
+              cap: "round",
+              join: "round",
+            }),
+            attributes: { journey: route.journey, type: "return" },
           })
-        })
-      );
-    }
+        );
+      }
+    });
   }
-}
 
-// ── Cities ───────────────────────────────────────────────
-function drawCities() {
-  cityLayer.removeAll();
-  labelLayer.removeAll();
+  // ============================================================
+  // Draw Cities — hides non-matching cities completely (not dimmed)
+  // ============================================================
+  function drawCities() {
+    cityLayer.removeAll();
+    labelLayer.removeAll();
 
-  const filtered = getFilteredCities();
-  const currentZoom = view?.zoom || 7;
+    const filteredCities = getFilteredCities();
 
-  for (const city of cities) {
-    const isFiltered = filtered.has(city.id);
-    const alpha = isFiltered ? 255 : 38;
-    const point = new Point({ longitude: city.lng, latitude: city.lat });
+    cities.forEach((city) => {
+      // Completely hide non-active journey cities
+      if (activeJourney !== "all" && !city.journeys.includes(activeJourney)) return;
 
-    // Determine marker color — use first matching phase color
-    let markerColor;
-    if (activePhase !== "all") {
-      const phase = phases.find((p) => p.id === activePhase);
-      markerColor = phase ? [...phase.color, alpha] : [201, 168, 76, alpha];
-    } else {
-      const firstPhase = phases.find((p) => city.phases.includes(p.id));
-      markerColor = firstPhase
-        ? [...firstPhase.color, alpha]
-        : [201, 168, 76, alpha];
-    }
+      const isVisible = filteredCities.has(city.id);
+      const markerColor = getStopJourneyColor(city);
+      const size = getCitySize(city.significance);
+      const opacity = isVisible ? 1 : 0.15;
+      const stopNumber = getCityStopNumber(city);
 
-    // Marker size by significance
-    const size =
-      city.significance === "major" ? 16 :
-      city.significance === "moderate" ? 13 : 10;
+      const point = new Point({ longitude: city.lng, latitude: city.lat });
 
-    // Glow (major cities only, when filtered)
-    if (city.significance === "major" && isFiltered) {
+      // Glow for major cities
+      if (city.significance === "major" && isVisible) {
+        cityLayer.add(
+          new Graphic({
+            geometry: point,
+            symbol: new SimpleMarkerSymbol({
+              style: "circle",
+              size: size + 12,
+              color: [markerColor[0], markerColor[1], markerColor[2], 40],
+              outline: { color: [0, 0, 0, 0], width: 0 },
+            }),
+            attributes: { cityId: city.id, type: "glow" },
+          })
+        );
+      }
+
+      // City marker
       cityLayer.add(
         new Graphic({
           geometry: point,
           symbol: new SimpleMarkerSymbol({
             style: "circle",
-            color: [...markerColor.slice(0, 3), 40],
-            size: size + 12,
-            outline: { color: [0, 0, 0, 0], width: 0 }
-          })
+            size,
+            color: [...markerColor, opacity * 255],
+            outline: {
+              color: [60, 40, 50, opacity * 200],
+              width: getCityOutlineWidth(city.significance),
+            },
+          }),
+          attributes: { cityId: city.id, type: "city" },
         })
       );
-    }
 
-    // Selection ring
-    if (selectedCity?.id === city.id) {
-      cityLayer.add(
-        new Graphic({
-          geometry: point,
-          symbol: new SimpleMarkerSymbol({
-            style: "circle",
-            color: [0, 0, 0, 0],
-            size: size + 8,
-            outline: { color: [201, 168, 76, 255], width: 2 }
-          })
-        })
-      );
-    }
-
-    // Main marker
-    cityLayer.add(
-      new Graphic({
-        geometry: point,
-        symbol: new SimpleMarkerSymbol({
-          style: "circle",
-          color: markerColor,
-          size,
-          outline: {
-            color: [...markerColor.slice(0, 3), Math.min(alpha + 30, 255)],
-            width: 1
-          }
-        }),
-        attributes: { cityId: city.id }
-      })
-    );
-
-    // Stop number for active phase
-    if (activePhase !== "all" && isFiltered) {
-      const event = city.events.find((e) => e.phase === activePhase);
-      if (event) {
+      // Stop number inside the marker
+      if (stopNumber != null && isVisible) {
+        const numFontSize = city.significance === "major" ? 9 : city.significance === "moderate" ? 8 : 7;
         cityLayer.add(
           new Graphic({
             geometry: point,
             symbol: new TextSymbol({
-              text: String(event.order),
-              color: [26, 17, 25, 255],
-              font: { size: 8, family: "Inter", weight: "bold" },
-              yoffset: 0
-            })
+              text: String(stopNumber),
+              color: [255, 255, 255, 255],
+              haloColor: [0, 0, 0, 120],
+              haloSize: 0.5,
+              font: {
+                size: numFontSize,
+                family: "Arial",
+                weight: "bold",
+              },
+              yoffset: 0,
+              xoffset: 0,
+              horizontalAlignment: "center",
+              verticalAlignment: "middle",
+            }),
+            attributes: { cityId: city.id, type: "stopNumber" },
           })
         );
       }
-    }
 
-    // City name label
-    if (isFiltered && (city.significance !== "minor" || currentZoom > 8)) {
-      const lang = getLang();
-      let name;
-      if (showBiblicalNames) {
-        name = cityText(city.id, "biblicalName") || city.biblicalName;
-      } else {
-        name = cityText(city.id, "modernName") || city.modernName;
-      }
-
-      const isMajor = city.significance === "major";
-      labelLayer.add(
-        new Graphic({
-          geometry: point,
-          symbol: new TextSymbol({
-            text: name,
-            color: isMajor
-              ? [240, 230, 214, 230]
-              : [200, 190, 170, 180],
-            font: {
-              size: isMajor ? 11 : 9,
-              family: isMajor ? "Cinzel" : "Inter",
-              weight: isMajor ? "bold" : "normal"
-            },
-            haloColor: [26, 17, 25, 200],
-            haloSize: 2,
-            yoffset: -(size / 2 + 10)
+      // City name label — dark text [40,25,35] with white halo [255,255,255,220]
+      // font "Avenir Next LT Pro", yoffset positive (label ABOVE marker)
+      if (isVisible && (city.significance !== "minor" || view.zoom > 8)) {
+        const labelText = showBiblicalNames
+          ? (cityText(city.id, "biblicalName") || city.biblicalName)
+          : (cityText(city.id, "modernName") || city.modernName);
+        labelLayer.add(
+          new Graphic({
+            geometry: point,
+            symbol: new TextSymbol({
+              text: labelText,
+              color: [40, 25, 35, opacity * 255],
+              haloColor: [255, 255, 255, 220],
+              haloSize: 2,
+              font: {
+                size: city.significance === "major" ? 11 : 9,
+                family: "Avenir Next LT Pro",
+                weight: city.significance === "major" ? "bold" : "normal",
+              },
+              yoffset: size / 2 + 8,
+            }),
+            attributes: { cityId: city.id, type: "label" },
           })
-        })
-      );
-    }
-  }
-}
-
-// ── Filtering ────────────────────────────────────────────
-function getFilteredCities() {
-  const set = new Set();
-
-  for (const city of cities) {
-    let match = false;
-
-    if (activePhase === "all") {
-      match = true;
-    } else {
-      match = city.phases.includes(activePhase);
-    }
-
-    if (match && selectedChapter) {
-      const entries = scriptureIndex[selectedChapter] || [];
-      match = entries.some((e) => e.cityId === city.id);
-    }
-
-    if (match) set.add(city.id);
-  }
-
-  return set;
-}
-
-// ══════════════════════════════════════════════════════════
-// CHIP BAR
-// ══════════════════════════════════════════════════════════
-function buildChipBar() {
-  const bar = document.getElementById("chip-bar");
-  bar.innerHTML = "";
-
-  // "All Phases" chip
-  const allChip = document.createElement("button");
-  allChip.className = "chip" + (activePhase === "all" ? " active" : "");
-  allChip.textContent = t("allPhases");
-  allChip.addEventListener("click", () => {
-    activePhase = "all";
-    selectedChapter = null;
-    closeBottomSheet();
-    buildChipBar();
-    refresh();
-    zoomToOverview();
-  });
-  bar.appendChild(allChip);
-
-  // Phase chips
-  for (const phase of phases) {
-    const chip = document.createElement("button");
-    chip.className = "chip" + (activePhase === phase.id ? " active" : "");
-
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.style.background = phase.hexColor;
-    chip.appendChild(dot);
-
-    const label = phaseText(phase.id, "shortName") || phase.shortName;
-    chip.appendChild(document.createTextNode(label));
-
-    chip.addEventListener("click", () => {
-      activePhase = phase.id;
-      selectedChapter = null;
-      closeBottomSheet();
-      buildChipBar();
-      refresh();
-      zoomToPhase(phase.id);
-    });
-    bar.appendChild(chip);
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// ZOOM HELPERS
-// ══════════════════════════════════════════════════════════
-function zoomToOverview() {
-  view?.goTo({ center: [35.0, 31.8], zoom: 7 }, { duration: 800 });
-}
-
-function zoomToPhase(phaseId) {
-  const phaseCities = cities.filter((c) => c.phases.includes(phaseId));
-  if (phaseCities.length === 0) return;
-
-  const lngs = phaseCities.map((c) => c.lng);
-  const lats = phaseCities.map((c) => c.lat);
-  const padding = 0.5;
-
-  view?.goTo(
-    {
-      target: {
-        type: "extent",
-        xmin: Math.min(...lngs) - padding,
-        ymin: Math.min(...lats) - padding,
-        xmax: Math.max(...lngs) + padding,
-        ymax: Math.max(...lats) + padding,
-        spatialReference: { wkid: 4326 }
+        );
       }
-    },
-    { duration: 800 }
-  );
-}
-
-function zoomToCity(city) {
-  const targetZoom = Math.max(view?.zoom || 7, 9);
-  view?.goTo(
-    { center: [city.lng, city.lat], zoom: targetZoom },
-    { duration: 600 }
-  );
-}
-
-// ══════════════════════════════════════════════════════════
-// BOTTOM SHEET (City Detail)
-// ══════════════════════════════════════════════════════════
-function selectCity(city) {
-  selectedCity = city;
-  refresh();
-  zoomToCity(city);
-  openBottomSheet(city);
-}
-
-function openBottomSheet(city) {
-  const sheet = document.getElementById("bottom-sheet");
-  const overlay = document.getElementById("sheet-overlay");
-
-  // City name
-  const nameEl = document.getElementById("sheet-city-name");
-  nameEl.textContent =
-    cityText(city.id, "biblicalName") || city.biblicalName;
-
-  // Modern name & region
-  document.getElementById("sheet-modern-name").textContent =
-    cityText(city.id, "modernName") || city.modernName;
-  document.getElementById("sheet-region").textContent =
-    cityText(city.id, "region") || city.region;
-
-  // Events
-  const eventsEl = document.getElementById("sheet-events");
-  eventsEl.innerHTML = "";
-
-  // Filter events by active phase (or show all)
-  let relevantEvents = city.events;
-  if (activePhase !== "all") {
-    relevantEvents = city.events.filter((e) => e.phase === activePhase);
-  }
-  if (relevantEvents.length === 0) relevantEvents = city.events;
-
-  for (let i = 0; i < relevantEvents.length; i++) {
-    const event = relevantEvents[i];
-    const phase = phases.find((p) => p.id === event.phase);
-
-    const card = document.createElement("div");
-    card.className = "event-card";
-
-    // Phase tag
-    const tag = document.createElement("div");
-    tag.className = "event-phase-tag";
-    tag.style.background = `${phase.hexColor}22`;
-    tag.style.color = phase.hexColor;
-    const phaseName = phaseText(phase.id, "name") || phase.name;
-    tag.textContent = `${phaseName} — ${phase.dateRange}`;
-    card.appendChild(tag);
-
-    // Event index for translation lookup
-    const eventIdx = city.events.indexOf(event) + 1;
-
-    // Action title
-    const action = document.createElement("div");
-    action.className = "event-action";
-    action.textContent =
-      eventText(city.id, eventIdx, "action") || event.action;
-    card.appendChild(action);
-
-    // Description
-    const desc = document.createElement("div");
-    desc.className = "event-description";
-    desc.textContent =
-      eventText(city.id, eventIdx, "description") || event.description;
-    card.appendChild(desc);
-
-    // Bible quote
-    const quoteText =
-      eventText(city.id, eventIdx, "quote") || event.quote;
-    if (quoteText) {
-      const quote = document.createElement("div");
-      quote.className = "event-quote";
-      quote.textContent = quoteText;
-      card.appendChild(quote);
-    }
-
-    // Verse badge
-    const badge = document.createElement("span");
-    badge.className = "event-verse-badge";
-    badge.textContent = displayVerse(event.verse);
-    card.appendChild(badge);
-
-    eventsEl.appendChild(card);
+    });
   }
 
-  sheet.classList.add("open");
-  overlay.classList.add("open");
-}
-
-function closeBottomSheet() {
-  selectedCity = null;
-  document.getElementById("bottom-sheet").classList.remove("open");
-  document.getElementById("sheet-overlay").classList.remove("open");
-  refresh();
-}
-
-// ── Touch drag to dismiss (mobile) ──────────────────────
-(function initSheetDrag() {
-  const handle = document.getElementById("sheet-handle");
-  const sheet = document.getElementById("bottom-sheet");
-  let startY = 0;
-  let currentY = 0;
-
-  handle.addEventListener("touchstart", (e) => {
-    startY = e.touches[0].clientY;
-    sheet.style.transition = "none";
-  });
-
-  handle.addEventListener("touchmove", (e) => {
-    currentY = e.touches[0].clientY;
-    const diff = currentY - startY;
-    if (diff > 0) {
-      sheet.style.transform = `translateY(${diff}px)`;
-    }
-  });
-
-  handle.addEventListener("touchend", () => {
-    sheet.style.transition = "";
-    sheet.style.transform = "";
-    if (currentY - startY > 100) {
-      closeBottomSheet();
-    }
-    startY = 0;
-    currentY = 0;
-  });
-})();
-
-// ══════════════════════════════════════════════════════════
-// SCRIPTURE PANEL
-// ══════════════════════════════════════════════════════════
-function buildChapterList(filter = "") {
-  const list = document.getElementById("scripture-list");
-  list.innerHTML = "";
-  const lowerFilter = filter.toLowerCase();
-
-  for (const chapter of allChapters) {
-    const displayCh = displayChapter(chapter);
-    const entries = scriptureIndex[chapter] || [];
-
-    // Filter
-    if (lowerFilter) {
-      const matchesChapter = displayCh.toLowerCase().includes(lowerFilter);
-      const matchesVerse = entries.some((e) =>
-        displayVerse(e.event.verse).toLowerCase().includes(lowerFilter)
-      );
-      if (!matchesChapter && !matchesVerse) continue;
-    }
-
-    // Chapter header
-    const chDiv = document.createElement("div");
-    chDiv.className =
-      "scripture-chapter" +
-      (selectedChapter === chapter ? " active" : "");
-    const chTitle = document.createElement("div");
-    chTitle.className = "chapter-title";
-    chTitle.textContent = displayCh;
-    chDiv.appendChild(chTitle);
-
-    chDiv.addEventListener("click", () => {
-      if (selectedChapter === chapter) {
-        selectedChapter = null;
+  // ============================================================
+  // Filtering
+  // ============================================================
+  function getFilteredCities() {
+    const visible = new Set();
+    cities.forEach((city) => {
+      if (activeJourney === "all") {
+        if (selectedChapter) {
+          if (city.events.some((e) => `${e.book} ${e.chapter}` === selectedChapter))
+            visible.add(city.id);
+        } else {
+          visible.add(city.id);
+        }
       } else {
-        selectedChapter = chapter;
+        if (city.journeys.includes(activeJourney)) {
+          if (selectedChapter) {
+            if (
+              city.events.some(
+                (e) =>
+                  e.journey === activeJourney &&
+                  `${e.book} ${e.chapter}` === selectedChapter
+              )
+            )
+              visible.add(city.id);
+          } else {
+            visible.add(city.id);
+          }
+        }
       }
-      buildChapterList(filter);
-      refresh();
     });
-    list.appendChild(chDiv);
+    return visible;
+  }
 
-    // Verse entries (if this chapter is selected or filter matches)
-    if (selectedChapter === chapter || lowerFilter) {
-      for (const entry of entries) {
-        const city = cities.find((c) => c.id === entry.cityId);
-        if (!city) continue;
+  function refresh() {
+    drawGeoLabels();
+    drawRoutes();
+    drawCities();
+  }
 
-        const phase = phases.find((p) => p.id === entry.event.phase);
+  // ============================================================
+  // UI: Journey Chip Selector (static chips, toggle active class)
+  // ============================================================
+  const chips = document.querySelectorAll(".journey-chip");
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chips.forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
 
-        const vDiv = document.createElement("div");
-        vDiv.className = "scripture-verse-entry";
+      const val = chip.dataset.journey;
+      activeJourney = val === "all" ? "all" : parseInt(val);
+      selectedChapter = null;
+      updateChapterHighlights();
+      closeBottomSheet();
+      refresh();
 
-        const dot = document.createElement("span");
-        dot.className = "verse-dot";
-        dot.style.background = phase ? phase.hexColor : "#C9A84C";
-        vDiv.appendChild(dot);
-
-        const ref = document.createElement("span");
-        ref.className = "verse-ref";
-        ref.textContent = displayVerse(entry.event.verse);
-        vDiv.appendChild(ref);
-
-        const cityName = document.createElement("span");
-        cityName.className = "verse-city";
-        cityName.textContent =
-          cityText(city.id, "biblicalName") || city.biblicalName;
-        vDiv.appendChild(cityName);
-
-        vDiv.addEventListener("click", (e) => {
-          e.stopPropagation();
-          selectCity(city);
-        });
-        list.appendChild(vDiv);
+      if (activeJourney !== "all") {
+        const journeyCities = cities.filter((c) =>
+          c.journeys.includes(activeJourney)
+        );
+        if (journeyCities.length > 0) zoomToCities(journeyCities);
+      } else {
+        view.goTo({ center: [35.0, 31.8], zoom: 7 }, { duration: 800 });
       }
+    });
+  });
+
+  function zoomToCities(citiesList) {
+    const lngs = citiesList.map((c) => c.lng);
+    const lats = citiesList.map((c) => c.lat);
+    view.goTo(
+      {
+        xmin: Math.min(...lngs) - 2,
+        ymin: Math.min(...lats) - 2,
+        xmax: Math.max(...lngs) + 2,
+        ymax: Math.max(...lats) + 2,
+        spatialReference: { wkid: 4326 },
+      },
+      { duration: 800 }
+    );
+  }
+
+  // ============================================================
+  // UI: Scripture Filter Panel
+  // ============================================================
+  const scripturePanel = document.getElementById("scripturePanel");
+  const btnScripture = document.getElementById("btnScripture");
+  const closeScripture = document.getElementById("closeScripture");
+  const scriptureSearch = document.getElementById("scriptureSearch");
+  const chapterList = document.getElementById("chapterList");
+
+  btnScripture.addEventListener("click", () => {
+    scripturePanel.classList.toggle("hidden");
+    if (!scripturePanel.classList.contains("hidden")) buildChapterList();
+  });
+
+  closeScripture.addEventListener("click", () => {
+    scripturePanel.classList.add("hidden");
+  });
+
+  function buildChapterList(filter = "") {
+    chapterList.innerHTML = "";
+    const filterLower = filter.toLowerCase();
+
+    allChapters.forEach((chapter) => {
+      const entries = scriptureIndex[chapter] || [];
+      if (entries.length === 0) return;
+
+      const chapterDisplay = displayChapter(chapter);
+
+      if (filterLower) {
+        const match =
+          chapter.toLowerCase().includes(filterLower) ||
+          chapterDisplay.toLowerCase().includes(filterLower) ||
+          entries.some(
+            (e) =>
+              e.event.verse.toLowerCase().includes(filterLower) ||
+              displayVerse(e.event.verse).toLowerCase().includes(filterLower) ||
+              e.event.description.toLowerCase().includes(filterLower)
+          );
+        if (!match) return;
+      }
+
+      const chapterDiv = document.createElement("div");
+      const evtCount = entries.length;
+      const evtWord = evtCount === 1 ? t("eventSingular") : t("eventPlural");
+
+      // Chapter header with count badge showing "X events"
+      const header = document.createElement("div");
+      header.className = `chapter-item${selectedChapter === chapter ? " active" : ""}`;
+      header.innerHTML = `
+        <span class="chapter-name">${chapterDisplay}</span>
+        <span class="chapter-count">${evtCount} ${evtWord}</span>
+      `;
+      header.addEventListener("click", () => {
+        selectedChapter = selectedChapter === chapter ? null : chapter;
+        updateChapterHighlights();
+        refresh();
+        buildChapterList(filter);
+        if (selectedChapter) {
+          const matchCities = entries
+            .map((e) => cities.find((c) => c.id === e.cityId))
+            .filter(Boolean);
+          if (matchCities.length > 0) zoomToCities(matchCities);
+        }
+      });
+      chapterDiv.appendChild(header);
+
+      // Verse sublist with verse-dot + verse-city
+      const sublist = document.createElement("div");
+      sublist.className = "verse-sublist";
+      entries.forEach((entry) => {
+        const city = cities.find((c) => c.id === entry.cityId);
+        if (!city) return;
+        const cityName = cityText(city.id, "biblicalName") || city.biblicalName;
+        const verseDisplay = displayVerse(entry.event.verse);
+        const verseDiv = document.createElement("div");
+        verseDiv.className = "verse-item";
+        verseDiv.innerHTML = `
+          <span class="verse-dot" style="background:${getJourneyHex(entry.event.journey)}"></span>
+          <span><strong class="verse-city">${cityName}</strong> &mdash; ${verseDisplay}</span>
+        `;
+        verseDiv.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectCity(city.id);
+          scripturePanel.classList.add("hidden");
+          view.goTo({ center: [city.lng, city.lat], zoom: 8 }, { duration: 600 });
+        });
+        sublist.appendChild(verseDiv);
+      });
+
+      chapterDiv.appendChild(sublist);
+      chapterList.appendChild(chapterDiv);
+    });
+  }
+
+  function updateChapterHighlights() {
+    chapterList.querySelectorAll(".chapter-item").forEach((item) => {
+      const name = item.querySelector(".chapter-name").textContent;
+      const isActive = allChapters.some(
+        (ch) => (ch === name || displayChapter(ch) === name) && ch === selectedChapter
+      );
+      item.classList.toggle("active", isActive);
+    });
+  }
+
+  // Scripture search uses "calciteInputTextInput" (NOT "input")
+  scriptureSearch.addEventListener("calciteInputTextInput", (e) => {
+    buildChapterList(e.target.value);
+  });
+
+  // ============================================================
+  // UI: Name Toggle
+  // ============================================================
+  const btnToggleNames = document.getElementById("btnToggleNames");
+  const nameToggle = document.getElementById("nameToggle");
+  const nameLabel = document.getElementById("nameLabel");
+  let nameToggleTimeout;
+
+  btnToggleNames.addEventListener("click", () => {
+    showBiblicalNames = !showBiblicalNames;
+    nameLabel.textContent = showBiblicalNames
+      ? (lang === "es" ? "Mostrando: Nombres Biblicos" : "Showing: Biblical Names")
+      : (lang === "es" ? "Mostrando: Nombres Modernos" : "Showing: Modern Names");
+    nameToggle.classList.add("visible");
+    clearTimeout(nameToggleTimeout);
+    nameToggleTimeout = setTimeout(() => nameToggle.classList.remove("visible"), 2000);
+    drawCities();
+  });
+
+  // ============================================================
+  // UI: Language Switch (in-app toggle)
+  // ============================================================
+  document.getElementById("btnLang").addEventListener("click", () => {
+    const newLang = lang === "en" ? "es" : "en";
+    setLang(newLang);
+    applyTranslations();
+    refresh();
+
+    // Rebuild scripture panel if open
+    if (!scripturePanel.classList.contains("hidden")) {
+      buildChapterList(scriptureSearch.value || "");
+    }
+
+    // Re-open bottom sheet for current city if visible
+    if (selectedCity && bottomSheet.classList.contains("open")) {
+      openBottomSheet(selectedCity);
+    }
+  });
+
+  // ============================================================
+  // UI: Bottom Sheet — Stop Navigation
+  // ============================================================
+  const bottomSheet = document.getElementById("bottomSheet");
+  const sheetBiblicalName = document.getElementById("sheetBiblicalName");
+  const sheetModernName = document.getElementById("sheetModernName");
+  const sheetEvents = document.getElementById("sheetEvents");
+  const sheetHandle = document.getElementById("sheetHandle");
+
+  // ---- Stop navigation state ----
+  let orderedStops = [];
+  let currentStopIndex = -1;
+
+  /**
+   * Build an ordered list of stops for the current view.
+   * When a specific journey is selected: cities ordered by their event.order for that journey.
+   * When "all": cities ordered by journey then order.
+   */
+  function buildStopList() {
+    const stops = [];
+    if (activeJourney !== "all") {
+      cities.forEach((city) => {
+        const event = city.events.find((e) => e.journey === activeJourney);
+        if (event) stops.push({ city, order: event.order, journey: activeJourney });
+      });
+      stops.sort((a, b) => a.order - b.order);
+    } else {
+      // All journeys: order by journey id, then by event order
+      journeys.forEach((j) => {
+        cities.forEach((city) => {
+          const event = city.events.find((e) => e.journey === j.id);
+          if (event) stops.push({ city, order: event.order, journey: j.id });
+        });
+      });
+      // Remove duplicate cities — keep first appearance
+      const seen = new Set();
+      const unique = [];
+      stops.forEach((s) => {
+        if (!seen.has(s.city.id)) {
+          seen.add(s.city.id);
+          unique.push(s);
+        }
+      });
+      stops.length = 0;
+      stops.push(...unique);
+    }
+    orderedStops = stops.map((s) => s.city);
+  }
+
+  function updateNavButtons() {
+    const prevBtn = document.getElementById("btnPrevStop");
+    const nextBtn = document.getElementById("btnNextStop");
+    const counter = document.getElementById("stopCounter");
+    const prevLabel = document.getElementById("prevLabel");
+    const nextLabel = document.getElementById("nextLabel");
+
+    prevLabel.textContent = lang === "es" ? "Anterior" : "Previous";
+    nextLabel.textContent = lang === "es" ? "Siguiente" : "Next";
+
+    prevBtn.disabled = currentStopIndex <= 0;
+    nextBtn.disabled = currentStopIndex >= orderedStops.length - 1;
+    counter.textContent = `${currentStopIndex + 1} / ${orderedStops.length}`;
+  }
+
+  function navigateToStop(index) {
+    if (index < 0 || index >= orderedStops.length) return;
+    currentStopIndex = index;
+    const city = orderedStops[index];
+    openBottomSheet(city);
+    highlightCity(city.id);
+    view.goTo(
+      { center: [city.lng, city.lat], zoom: Math.max(view.zoom, 7) },
+      { duration: 500 }
+    );
+  }
+
+  document.getElementById("btnPrevStop").addEventListener("click", () => {
+    navigateToStop(currentStopIndex - 1);
+  });
+
+  document.getElementById("btnNextStop").addEventListener("click", () => {
+    navigateToStop(currentStopIndex + 1);
+  });
+
+  function openBottomSheet(city) {
+    selectedCity = city;
+
+    // Rebuild stop list and find current index
+    buildStopList();
+    currentStopIndex = orderedStops.findIndex((c) => c.id === city.id);
+
+    const bName = cityText(city.id, "biblicalName") || city.biblicalName;
+    const mName = cityText(city.id, "modernName") || city.modernName;
+    const region = cityText(city.id, "region") || city.region;
+    sheetBiblicalName.textContent = bName;
+    sheetModernName.textContent = `${t("sheetModernLabel")} ${mName}  |  ${t("sheetRegionLabel")} ${region}`;
+
+    // Build event cards
+    let eventsToShow = city.events;
+    if (activeJourney !== "all") {
+      eventsToShow = city.events.filter((e) => e.journey === activeJourney);
+    }
+
+    sheetEvents.innerHTML = eventsToShow
+      .map((event) => {
+        const j = journeys.find((j) => j.id === event.journey);
+        const jShort = journeyText(event.journey, "shortName") || j?.shortName || "Journey";
+        const jDate = journeyText(event.journey, "dateRange") || j?.dateRange || "";
+        const action = eventText(city.id, event.journey, "action") || event.action;
+        const description = eventText(city.id, event.journey, "description") || event.description;
+        const quote = eventText(city.id, event.journey, "quote") || event.quote;
+        const verse = displayVerse(event.verse);
+
+        return `
+          <div class="event-card" data-journey="${event.journey}">
+            <div class="event-journey-tag">${jShort} &bull; ${jDate}</div>
+            <div class="event-action">${action}</div>
+            <p class="event-description">${description}</p>
+            ${quote ? `<div class="event-quote">${quote}</div>` : ""}
+            <span class="event-verse-ref">${verse}</span>
+          </div>
+        `;
+      })
+      .join("");
+
+    updateNavButtons();
+    bottomSheet.classList.add("open");
+
+    // Scroll sheet content to top
+    document.getElementById("sheetContent").scrollTop = 0;
+  }
+
+  function closeBottomSheet() {
+    bottomSheet.classList.remove("open");
+    selectedCity = null;
+  }
+
+  document.getElementById("closeSheet").addEventListener("click", closeBottomSheet);
+
+  // Touch drag to dismiss on mobile
+  let sheetStartY = 0;
+  let sheetCurrentY = 0;
+  let isDragging = false;
+
+  sheetHandle.addEventListener("touchstart", (e) => {
+    isDragging = true;
+    sheetStartY = e.touches[0].clientY;
+    bottomSheet.style.transition = "none";
+  });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!isDragging) return;
+    sheetCurrentY = e.touches[0].clientY;
+    const diff = sheetCurrentY - sheetStartY;
+    if (diff > 0) bottomSheet.style.transform = `translateY(${diff}px)`;
+  });
+
+  document.addEventListener("touchend", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    bottomSheet.style.transition = "";
+    const diff = sheetCurrentY - sheetStartY;
+    if (diff > 100) {
+      closeBottomSheet();
+    }
+    bottomSheet.style.transform = "";
+  });
+
+  // ============================================================
+  // Map Click Handler
+  // ============================================================
+  function selectCity(cityId) {
+    const city = cities.find((c) => c.id === cityId);
+    if (city) {
+      openBottomSheet(city);
+      highlightCity(cityId);
     }
   }
-}
 
-function openScripturePanel() {
-  const panel = document.getElementById("scripture-panel");
-  panel.classList.add("open");
-  document.getElementById("btn-scripture").classList.add("active");
+  function highlightCity(cityId) {
+    drawCities();
+    const city = cities.find((c) => c.id === cityId);
+    if (!city) return;
+
+    // Add gold ring graphic
+    cityLayer.add(
+      new Graphic({
+        geometry: new Point({ longitude: city.lng, latitude: city.lat }),
+        symbol: new SimpleMarkerSymbol({
+          style: "circle",
+          size: getCitySize(city.significance) + 12,
+          color: [201, 168, 76, 35],
+          outline: { color: [201, 168, 76, 200], width: 2 },
+        }),
+        attributes: { cityId: city.id, type: "highlight" },
+      })
+    );
+  }
+
+  view.on("click", (event) => {
+    view.hitTest(event).then((response) => {
+      const cityGraphic = response.results.find(
+        (r) => r.graphic?.attributes?.type === "city"
+      );
+
+      if (cityGraphic) {
+        const cityId = cityGraphic.graphic.attributes.cityId;
+        selectCity(cityId);
+        const city = cities.find((c) => c.id === cityId);
+        if (city) {
+          view.goTo(
+            { center: [city.lng, city.lat], zoom: Math.max(view.zoom, 7) },
+            { duration: 500 }
+          );
+        }
+      } else if (!event.native.target.closest(".bottom-sheet")) {
+        closeBottomSheet();
+      }
+    });
+  });
+
+  // Debounced label refresh on zoom (150ms timeout)
+  let zoomTimer;
+  reactiveUtils.watch(
+    () => view.zoom,
+    () => {
+      clearTimeout(zoomTimer);
+      zoomTimer = setTimeout(() => drawCities(), 150);
+    }
+  );
+
+  // ============================================================
+  // Initial Draw
+  // ============================================================
+  refresh();
   buildChapterList();
 }
 
-function closeScripturePanel() {
-  document.getElementById("scripture-panel").classList.remove("open");
-  document.getElementById("btn-scripture").classList.remove("active");
-}
+// ============================================================
+// Apply translations to static HTML elements (outside initMap)
+// ============================================================
+function applyTranslations() {
+  // Header navLogo heading/description
+  const navLogo = document.getElementById("navLogo");
+  navLogo.setAttribute("heading", t("appTitle"));
+  navLogo.setAttribute("description", t("appSubtitle"));
 
-// ══════════════════════════════════════════════════════════
-// UI BINDINGS
-// ══════════════════════════════════════════════════════════
-function bindUIEvents() {
-  // Names toggle
-  document.getElementById("btn-names").addEventListener("click", () => {
-    showBiblicalNames = !showBiblicalNames;
-    refresh();
-    showToast(showBiblicalNames ? t("biblicalNames") : t("modernNames"));
+  // Header buttons text
+  document.getElementById("btnScripture").textContent = t("btnScripture");
+  document.getElementById("btnToggleNames").textContent = t("btnNames");
+
+  // Donate button text
+  const donateBtnText = document.getElementById("donateBtnText");
+  if (donateBtnText) donateBtnText.textContent = lang === "es" ? "Apoya" : "Support";
+  document.getElementById("btnDonate").setAttribute("title",
+    lang === "es" ? "Apoya este proyecto" : "Support this project");
+
+  // Language switch button — shows the OTHER language
+  const langBtnText = document.getElementById("langBtnText");
+  if (langBtnText) langBtnText.textContent = lang === "en" ? "ES" : "EN";
+
+  // Journey chip labels via data-i18n
+  document.querySelectorAll(".journey-chip").forEach((chip) => {
+    const labelEl = chip.querySelector(".chip-label");
+    const key = labelEl?.dataset?.i18n;
+    if (key) labelEl.textContent = t(key);
   });
 
-  // Scripture panel toggle
-  document.getElementById("btn-scripture").addEventListener("click", () => {
-    const panel = document.getElementById("scripture-panel");
-    if (panel.classList.contains("open")) {
-      closeScripturePanel();
-    } else {
-      openScripturePanel();
-    }
-  });
-
-  document.getElementById("scripture-close").addEventListener("click", () => {
-    closeScripturePanel();
-  });
-
-  // Scripture search
-  document
-    .getElementById("scripture-search-input")
-    .addEventListener("input", (e) => {
-      buildChapterList(e.target.value);
-    });
-
-  // About modal
-  document.getElementById("btn-info").addEventListener("click", () => {
-    document.getElementById("modal-about").classList.add("open");
-  });
-  document.getElementById("about-close").addEventListener("click", () => {
-    document.getElementById("modal-about").classList.remove("open");
-  });
-  document.getElementById("modal-about").addEventListener("click", (e) => {
-    if (e.target === e.currentTarget) {
-      e.currentTarget.classList.remove("open");
-    }
-  });
-
-  // Language switch
-  document.getElementById("btn-lang-switch").addEventListener("click", () => {
-    const newLang = getLang() === "en" ? "es" : "en";
-    setLang(newLang);
-    updateUIStrings();
-    buildChipBar();
-    buildAboutLegend();
-    refresh();
-    if (document.getElementById("scripture-panel").classList.contains("open")) {
-      buildChapterList(
-        document.getElementById("scripture-search-input").value
-      );
-    }
-    if (selectedCity) openBottomSheet(selectedCity);
-    showToast(newLang === "en" ? "English" : "Español");
-  });
-
-  // Bottom sheet overlay close
-  document.getElementById("sheet-overlay").addEventListener("click", () => {
-    closeBottomSheet();
-  });
-}
-
-// ══════════════════════════════════════════════════════════
-// UI UPDATES
-// ══════════════════════════════════════════════════════════
-function updateUIStrings() {
-  document.getElementById("app-title").textContent = t("appTitle");
-  document.getElementById("btn-names-label").textContent = t("names");
-  document.getElementById("btn-scripture-label").textContent = t("scripture");
-  document.getElementById("btn-info-label").textContent = t("about");
-  document.getElementById("scripture-panel-title").textContent = t("scriptureIndex");
-  document.getElementById("scripture-search-input").placeholder = t("searchPlaceholder");
-  document.getElementById("about-title").textContent = t("aboutTitle");
-  document.getElementById("about-description").textContent = t("aboutDescription");
-  document.getElementById("about-features").innerHTML =
-    `<strong>${t("features")}</strong> ${t("aboutFeatures")}`;
-  document.getElementById("about-close").textContent = t("close");
-}
-
-function updateSplash() {
-  document.getElementById("splash-title").textContent = t("appTitle");
-  const verseEl = document.getElementById("splash-verse");
-  verseEl.innerHTML = `${t("splashVerse")}<br/><span style="color: var(--text-muted); font-size: 0.82rem;">${t("splashVerseRef")}</span>`;
-}
-
-function buildAboutLegend() {
-  const container = document.getElementById("about-legend");
-  container.innerHTML = "";
-
-  for (const phase of phases) {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-
-    const dot = document.createElement("span");
-    dot.className = "legend-color";
-    dot.style.background = phase.hexColor;
-    item.appendChild(dot);
-
-    const text = document.createElement("span");
-    text.className = "legend-text";
-    const name = phaseText(phase.id, "name") || phase.name;
-    text.innerHTML = `${name} <span class="legend-dates">${phase.dateRange}</span>`;
-    item.appendChild(text);
-
-    container.appendChild(item);
-  }
-}
-
-// ── Toast ────────────────────────────────────────────────
-function showToast(message) {
-  const toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.classList.add("visible");
-  setTimeout(() => toast.classList.remove("visible"), 2000);
+  // Scripture panel title + search placeholder
+  document.getElementById("scripturePanelTitle").textContent = t("scripturePanelTitle");
+  document.getElementById("scriptureSearch").setAttribute("placeholder", t("scriptureSearchPlaceholder"));
 }

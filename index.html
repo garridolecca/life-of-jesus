@@ -1,131 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Life of Jesus — Interactive Gospel Map</title>
-  <meta name="description" content="Explore the life and ministry of Jesus Christ through an interactive map of the Holy Land, tracing events from all four Gospels." />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#1a1119" />
+    <meta name="description" content="Explore the life and ministry of Jesus Christ through an interactive map of the Holy Land, tracing events from all four Gospels." />
+    <title>The Life of Jesus</title>
 
-  <!-- ArcGIS Maps SDK 5.0 + Calcite -->
-  <link rel="stylesheet" href="https://js.arcgis.com/5.0/@arcgis/core/assets/esri/themes/dark/main.css" />
-  <script type="module" src="https://js.arcgis.com/5.0/"></script>
+    <!-- ArcGIS Maps SDK 5.0 -->
+    <script type="module" src="https://js.arcgis.com/5.0/"></script>
+    <link rel="stylesheet" href="https://js.arcgis.com/5.0/esri/themes/dark/main.css" />
 
-  <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css" />
-</head>
-<body>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-  <!-- ═══════ Language Selector ═══════ -->
-  <div id="language-selector">
-    <h1 id="lang-title">Life of Jesus</h1>
-    <p id="lang-subtitle">Interactive Gospel Map</p>
-    <div class="lang-buttons">
-      <button class="lang-btn" data-lang="en">English</button>
-      <button class="lang-btn" data-lang="es">Español</button>
-    </div>
-  </div>
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
 
-  <!-- ═══════ Splash / Loading Screen ═══════ -->
-  <div id="splash-screen">
-    <h2 id="splash-title">Life of Jesus</h2>
-    <p class="splash-verse" id="splash-verse">
-      "I am the way and the truth and the life.<br/>No one comes to the Father except through me."<br/>
-      <span style="color: var(--text-muted); font-size: 0.82rem;">— John 14:6</span>
-    </p>
-    <div class="progress-bar">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
-  </div>
+  <body class="calcite-mode-dark">
 
-  <!-- ═══════ Main Application ═══════ -->
-  <calcite-shell>
-
-    <!-- Header -->
-    <div class="app-header" slot="header">
-      <span class="app-title" id="app-title">Life of Jesus</span>
-      <div class="header-actions">
-        <button class="header-btn" id="btn-names" title="Toggle biblical/modern names">
-          <span id="btn-names-label">Names</span>
-        </button>
-        <button class="header-btn" id="btn-scripture" title="Scripture index">
-          <span id="btn-scripture-label">Scripture</span>
-        </button>
-        <button class="header-btn" id="btn-info" title="About this map">
-          <span id="btn-info-label">About</span>
-        </button>
-        <button class="header-btn" id="btn-lang-switch" title="Switch language">
-          EN/ES
-        </button>
+    <!-- ==================== LANGUAGE SELECTOR ==================== -->
+    <div id="langSelector" class="lang-selector">
+      <div class="lang-content">
+        <div class="lang-cross">&#10013;</div>
+        <h1 class="lang-title">The Life of Jesus<br><span class="lang-title-es">La Vida de Jes&uacute;s</span></h1>
+        <p class="lang-subtitle">Choose your language / Elige tu idioma</p>
+        <div class="lang-buttons">
+          <button class="lang-btn" data-lang="en">
+            <span class="lang-flag">EN</span>
+            English
+          </button>
+          <button class="lang-btn" data-lang="es">
+            <span class="lang-flag">ES</span>
+            Espa&ntilde;ol
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Phase Chip Bar -->
-    <div class="chip-bar" id="chip-bar" slot="header">
-      <!-- Chips are built dynamically by app.js -->
-    </div>
-
-    <!-- Map -->
-    <div id="viewDiv"></div>
-
-  </calcite-shell>
-
-  <!-- ═══════ Scripture Panel ═══════ -->
-  <div class="scripture-panel" id="scripture-panel">
-    <div class="scripture-header">
-      <h3 id="scripture-panel-title">Scripture Index</h3>
-      <button class="scripture-close" id="scripture-close">&times;</button>
-    </div>
-    <div class="scripture-search">
-      <input type="text" id="scripture-search-input" placeholder="Search (e.g. Matthew 5, John 11:1-44)..." />
-    </div>
-    <div class="scripture-list" id="scripture-list">
-      <!-- Built dynamically -->
-    </div>
-  </div>
-
-  <!-- ═══════ Bottom Sheet (City Detail) ═══════ -->
-  <div class="bottom-sheet-overlay" id="sheet-overlay"></div>
-  <div class="bottom-sheet" id="bottom-sheet">
-    <div class="sheet-handle" id="sheet-handle">
-      <div class="sheet-handle-bar"></div>
-    </div>
-    <div class="sheet-header">
-      <div class="sheet-city-name" id="sheet-city-name"></div>
-      <div class="sheet-city-meta">
-        <span class="sheet-modern-name" id="sheet-modern-name"></span>
-        <span class="sheet-region" id="sheet-region"></span>
+    <!-- ==================== SPLASH SCREEN ==================== -->
+    <div id="splash" class="splash hidden">
+      <div class="splash-content">
+        <div class="splash-cross">&#10013;</div>
+        <h1 id="splashTitle" class="splash-title">The Life of Jesus</h1>
+        <p id="splashSubtitle" class="splash-subtitle">Interactive Gospel Map</p>
+        <div class="splash-verse">
+          <span id="splashVerse">"I am the way and the truth and the life. No one comes to the Father except through me."</span>
+          <span id="splashRef" class="splash-ref">&mdash; John 14:6</span>
+        </div>
+        <div class="splash-loader">
+          <div class="splash-loader-bar"></div>
+        </div>
       </div>
     </div>
-    <div class="sheet-events" id="sheet-events">
-      <!-- Event cards inserted dynamically -->
-    </div>
-  </div>
 
-  <!-- ═══════ About Modal ═══════ -->
-  <div class="modal-overlay" id="modal-about">
-    <div class="modal-content">
-      <h2 id="about-title">About This Map</h2>
-      <p id="about-description">
-        This interactive map traces the life and ministry of Jesus Christ as recorded in the four Gospels — Matthew, Mark, Luke, and John. From his birth in Bethlehem to his ascension from the Mount of Olives, explore the places where Jesus taught, healed, and revealed the Kingdom of God.
-      </p>
-      <div id="about-legend">
-        <!-- Built dynamically -->
+    <!-- ==================== MAIN APP ==================== -->
+    <calcite-shell class="app-shell">
+
+      <!-- ===== HEADER ===== -->
+      <calcite-navigation slot="header" class="app-header">
+        <calcite-navigation-logo
+          slot="logo"
+          id="navLogo"
+          heading="Life of Jesus"
+          description="Interactive Gospel Map"
+          icon="map"
+        ></calcite-navigation-logo>
+
+        <div slot="content-end" class="header-actions">
+          <calcite-button id="btnScripture" appearance="transparent" icon-start="book" kind="neutral" scale="s" class="header-btn">Scripture</calcite-button>
+          <calcite-button id="btnToggleNames" appearance="transparent" icon-start="label" kind="neutral" scale="s" class="header-btn">Names</calcite-button>
+          <calcite-button id="btnDonate" appearance="transparent" icon-start="heart" kind="neutral" scale="s" class="header-btn header-btn-donate" title="Support this project"><span id="donateBtnText">Support</span></calcite-button>
+          <calcite-button id="btnLang" appearance="transparent" icon-start="globe" kind="neutral" scale="s" class="header-btn header-btn-lang"><span id="langBtnText">ES</span></calcite-button>
+          <calcite-button id="btnInfo" appearance="transparent" icon-start="information" kind="neutral" scale="s" class="header-btn header-btn-icon-only"></calcite-button>
+        </div>
+      </calcite-navigation>
+
+      <!-- ===== JOURNEY SELECTOR CHIPS ===== -->
+      <div id="journeyBar" class="journey-bar">
+        <div class="journey-chips">
+          <button class="journey-chip active" data-journey="all">
+            <span class="chip-dot" style="background:#888"></span>
+            <span class="chip-label" data-i18n="chipAll">All Phases</span>
+          </button>
+          <button class="journey-chip" data-journey="1">
+            <span class="chip-dot" style="background:#C9A84C"></span>
+            <span class="chip-label" data-i18n="chip1">Birth</span>
+          </button>
+          <button class="journey-chip" data-journey="2">
+            <span class="chip-dot" style="background:#4A7FB5"></span>
+            <span class="chip-label" data-i18n="chip2">Early</span>
+          </button>
+          <button class="journey-chip" data-journey="3">
+            <span class="chip-dot" style="background:#568259"></span>
+            <span class="chip-label" data-i18n="chip3">Galilee</span>
+          </button>
+          <button class="journey-chip" data-journey="4">
+            <span class="chip-dot" style="background:#A34B4B"></span>
+            <span class="chip-label" data-i18n="chip4">Passion</span>
+          </button>
+        </div>
       </div>
-      <p id="about-features" style="margin-top: 16px;">
-        <strong>Features:</strong> Click cities to read event details with Scripture references. Filter by life phase using the chips above the map. Use the Scripture panel to search by book and chapter. Toggle between biblical and modern place names.
-      </p>
-      <p style="font-size: 0.82rem; color: var(--text-muted);">
-        Scripture quotations are from the NIV (English) and RVR1960 (Spanish).
-      </p>
-      <button class="modal-close" id="about-close">Close</button>
-    </div>
-  </div>
 
-  <!-- ═══════ Toast ═══════ -->
-  <div class="toast" id="toast"></div>
+      <!-- ===== MAP ===== -->
+      <div id="viewDiv"></div>
 
-  <!-- ═══════ App Modules ═══════ -->
-  <script type="module" src="js/app.js"></script>
+      <!-- ===== SCRIPTURE FILTER PANEL ===== -->
+      <div id="scripturePanel" class="scripture-panel hidden">
+        <div class="scripture-panel-header">
+          <h3 id="scripturePanelTitle">Filter by Scripture</h3>
+          <calcite-button id="closeScripture" appearance="transparent" icon-start="x" kind="neutral" scale="s"></calcite-button>
+        </div>
+        <div class="scripture-search">
+          <calcite-input-text id="scriptureSearch" placeholder="Search verse (e.g. John 3:16)" icon="search" clearable scale="m"></calcite-input-text>
+        </div>
+        <div id="chapterList" class="chapter-list"></div>
+      </div>
 
-</body>
+      <!-- ===== INFO OVERLAY ===== -->
+      <div id="infoOverlay" class="modal-overlay hidden">
+        <div class="modal-box modal-box-md">
+          <div class="modal-header">
+            <h3 id="infoModalTitle">About This Map</h3>
+            <button class="modal-close" id="closeInfo">&times;</button>
+          </div>
+          <div id="infoModalContent" class="info-content"></div>
+        </div>
+      </div>
+
+      <!-- ===== DONATE OVERLAY ===== -->
+      <div id="donateOverlay" class="modal-overlay hidden">
+        <div class="modal-box modal-box-sm">
+          <div class="modal-header">
+            <h3 id="donateModalTitle">Support This Project</h3>
+            <button class="modal-close" id="closeDonate">&times;</button>
+          </div>
+          <div class="donate-content">
+            <p id="donateText" class="donate-text"></p>
+
+            <a href="https://venmo.com/u/garridolecca" target="_blank" rel="noopener" class="donate-venmo-btn" id="donateVenmoBtn">
+              <svg class="venmo-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20.41 1.87c.75 1.22 1.09 2.48 1.09 4.07 0 5.07-4.33 11.65-7.84 16.27H6.59L3.5 2.23l6.76-.62 1.73 13.86C13.87 12.42 16 7.6 16 4.79c0-1.52-.26-2.56-.67-3.4l5.08.48z"/></svg>
+              <span id="donateBtnLabel">Donate via Venmo</span>
+            </a>
+
+            <div class="donate-qr-section">
+              <p class="donate-qr-label" id="donateQrLabel">Or scan this QR code:</p>
+              <img class="donate-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://venmo.com/u/garridolecca&bgcolor=2d2329&color=C9A84C" alt="Venmo QR Code" width="150" height="150" />
+            </div>
+
+            <div class="donate-divider"></div>
+
+            <div class="donate-email">
+              <p id="donateEmailLabel" class="donate-email-label">Feedback or questions?</p>
+              <a href="mailto:garridolecca.rivera@gmail.com" class="donate-email-link">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                garridolecca.rivera@gmail.com
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BOTTOM SHEET (city details) ===== -->
+      <div id="bottomSheet" class="bottom-sheet">
+        <div class="sheet-handle" id="sheetHandle"><div class="handle-bar"></div></div>
+        <div class="sheet-content" id="sheetContent">
+          <div class="sheet-header">
+            <div class="sheet-city-info">
+              <h2 id="sheetBiblicalName" class="sheet-biblical-name"></h2>
+              <p id="sheetModernName" class="sheet-modern-name"></p>
+            </div>
+            <calcite-button id="closeSheet" appearance="transparent" icon-start="x" kind="neutral" scale="s" round></calcite-button>
+          </div>
+          <div id="sheetEvents" class="sheet-events"></div>
+          <div id="sheetNav" class="sheet-nav">
+            <button id="btnPrevStop" class="sheet-nav-btn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.3 12.3a1 1 0 0 1-1.4 0l-3.6-3.6a1 1 0 0 1 0-1.4l3.6-3.6a1 1 0 1 1 1.4 1.4L7.4 8l2.9 2.9a1 1 0 0 1 0 1.4z"/></svg>
+              <span id="prevLabel">Previous</span>
+            </button>
+            <span id="stopCounter" class="sheet-nav-counter">1 / 10</span>
+            <button id="btnNextStop" class="sheet-nav-btn">
+              <span id="nextLabel">Next</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5.7 3.7a1 1 0 0 1 1.4 0l3.6 3.6a1 1 0 0 1 0 1.4l-3.6 3.6a1 1 0 0 1-1.4-1.4L8.6 8 5.7 5.1a1 1 0 0 1 0-1.4z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== NAME TOGGLE INDICATOR ===== -->
+      <div id="nameToggle" class="name-toggle">
+        <span id="nameLabel">Showing: Biblical Names</span>
+      </div>
+
+    </calcite-shell>
+
+    <!-- App Script -->
+    <script type="module" src="js/app.js"></script>
+  </body>
 </html>
