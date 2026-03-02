@@ -86,7 +86,7 @@ export const cities = [
       },
       {
         journey: 1,
-        order: 2,
+        order: 3,
         action: "Visit of the Magi",
         description:
           "Wise men from the East follow a star to Bethlehem and present gifts of gold, frankincense, and myrrh to the child Jesus. Warned in a dream, they return home by another route.",
@@ -112,7 +112,7 @@ export const cities = [
     events: [
       {
         journey: 1,
-        order: 3,
+        order: 2,
         action: "Presentation at the Temple",
         description:
           "Joseph and Mary bring the infant Jesus to the Temple to consecrate him to the Lord. The aged prophet Simeon takes the child in his arms and declares him a light for revelation to the Gentiles. The prophetess Anna gives thanks and speaks of the child to all who are looking for the redemption of Jerusalem.",
@@ -126,7 +126,7 @@ export const cities = [
       },
       {
         journey: 1,
-        order: 5,
+        order: 6,
         action: "Boy Jesus at the Temple",
         description:
           "At age twelve, Jesus travels to Jerusalem for the Passover festival. His parents find him in the Temple courts, sitting among the teachers, listening and asking questions. All who hear him are amazed at his understanding.",
@@ -252,6 +252,7 @@ export const cities = [
         journey: 1,
         order: 4,
         action: "Flight to Egypt",
+
         description:
           "Warned in a dream that Herod seeks to destroy the child, Joseph takes Mary and Jesus and flees by night to Egypt. They remain there until Herod's death, fulfilling the prophecy: 'Out of Egypt I called my son.'",
         verse: "Matthew 2:13-15",
@@ -276,7 +277,7 @@ export const cities = [
     events: [
       {
         journey: 1,
-        order: 6,
+        order: 5,
         action: "Childhood in Nazareth",
         description:
           "After returning from Egypt, the holy family settles in the town of Nazareth in Galilee, fulfilling the word that Jesus would be called a Nazarene. The child grows and becomes strong, filled with wisdom, and the grace of God is upon him.",

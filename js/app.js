@@ -369,13 +369,33 @@ async function initMap() {
     return significance === "major" ? 2.5 : 2;
   }
 
+  // Cache for city-level sequential stop numbers per journey
+  let _stopNumberCache = {};
+  let _stopNumberJourney = null;
+
+  function buildStopNumberCache(journeyId) {
+    if (_stopNumberJourney === journeyId) return;
+    _stopNumberJourney = journeyId;
+    _stopNumberCache = {};
+    if (journeyId === "all") return;
+    // Get cities with events for this journey, sorted by first event order
+    const citiesWithEvents = [];
+    cities.forEach((c) => {
+      const evt = c.events.find((e) => e.journey === journeyId);
+      if (evt) citiesWithEvents.push({ id: c.id, order: evt.order });
+    });
+    citiesWithEvents.sort((a, b) => a.order - b.order);
+    citiesWithEvents.forEach((c, idx) => {
+      _stopNumberCache[c.id] = idx + 1;
+    });
+  }
+
   function getCityStopNumber(city) {
     if (activeJourney === "all") {
-      const event = city.events[0];
-      return event ? event.order : null;
+      return null;
     }
-    const event = city.events.find((e) => e.journey === activeJourney);
-    return event ? event.order : null;
+    buildStopNumberCache(activeJourney);
+    return _stopNumberCache[city.id] || null;
   }
 
   function getStopJourneyColor(city) {
@@ -632,6 +652,7 @@ async function initMap() {
 
       const val = chip.dataset.journey;
       activeJourney = val === "all" ? "all" : parseInt(val);
+      _stopNumberJourney = null; // invalidate stop number cache
       selectedChapter = null;
       updateChapterHighlights();
       closeBottomSheet();
