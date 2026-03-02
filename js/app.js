@@ -263,22 +263,22 @@ async function initMap() {
   // Geographic Reference Labels (seas, regions for the Holy Land)
   // ============================================================
   const geoLabels = [
-    // Water bodies — italic style
-    { en: "Mediterranean Sea", es: "Mar Mediterraneo", lat: 33.5, lng: 33.0, size: 16, italic: true, color: [70, 100, 140] },
-    { en: "Sea of Galilee", es: "Mar de Galilea", lat: 32.82, lng: 35.52, size: 10, italic: true, color: [70, 100, 140] },
-    { en: "Dead Sea", es: "Mar Muerto", lat: 31.5, lng: 35.48, size: 10, italic: true, color: [70, 100, 140] },
-    { en: "Red Sea", es: "Mar Rojo", lat: 29.5, lng: 33.0, size: 12, italic: true, color: [70, 100, 140] },
-    { en: "Jordan River", es: "Rio Jordan", lat: 32.35, lng: 35.58, size: 9, italic: true, color: [70, 100, 140] },
-    // Regions — normal style
-    { en: "GALILEE", es: "GALILEA", lat: 32.78, lng: 35.25, size: 13, color: [100, 90, 80] },
-    { en: "SAMARIA", es: "SAMARIA", lat: 32.25, lng: 35.15, size: 12, color: [100, 90, 80] },
-    { en: "JUDEA", es: "JUDEA", lat: 31.65, lng: 35.05, size: 13, color: [100, 90, 80] },
-    { en: "PEREA", es: "PEREA", lat: 32.0, lng: 35.70, size: 11, color: [100, 90, 80] },
-    { en: "DECAPOLIS", es: "DECAPOLIS", lat: 32.60, lng: 35.85, size: 11, color: [100, 90, 80] },
-    { en: "PHOENICIA", es: "FENICIA", lat: 33.45, lng: 35.15, size: 11, color: [100, 90, 80] },
-    { en: "IDUMEA", es: "IDUMEA", lat: 31.25, lng: 34.80, size: 10, color: [100, 90, 80] },
-    { en: "EGYPT", es: "EGIPTO", lat: 30.50, lng: 31.50, size: 14, color: [100, 90, 80] },
-    { en: "SINAI", es: "SINAI", lat: 30.20, lng: 33.50, size: 11, color: [100, 90, 80] },
+    // Water bodies — italic style (positioned away from city clusters)
+    { en: "Mediterranean\nSea", es: "Mar\nMediterráneo", lat: 33.2, lng: 33.5, size: 14, italic: true, color: [70, 100, 140] },
+    { en: "Sea of\nGalilee", es: "Mar de\nGalilea", lat: 32.75, lng: 35.42, size: 9, italic: true, color: [70, 100, 140] },
+    { en: "Dead\nSea", es: "Mar\nMuerto", lat: 31.45, lng: 35.47, size: 9, italic: true, color: [70, 100, 140] },
+    { en: "Red Sea", es: "Mar Rojo", lat: 29.3, lng: 33.2, size: 11, italic: true, color: [70, 100, 140] },
+    { en: "Jordan\nRiver", es: "Río\nJordán", lat: 32.50, lng: 35.65, size: 8, italic: true, color: [70, 100, 140] },
+    // Regions — positioned in open spaces away from cities
+    { en: "GALILEE", es: "GALILEA", lat: 33.02, lng: 35.10, size: 12, color: [100, 90, 80] },
+    { en: "SAMARIA", es: "SAMARIA", lat: 32.30, lng: 35.05, size: 11, color: [100, 90, 80] },
+    { en: "JUDEA", es: "JUDEA", lat: 31.60, lng: 34.95, size: 12, color: [100, 90, 80] },
+    { en: "PEREA", es: "PEREA", lat: 32.15, lng: 35.75, size: 10, color: [100, 90, 80] },
+    { en: "DECAPOLIS", es: "DECÁPOLIS", lat: 32.55, lng: 35.95, size: 10, color: [100, 90, 80] },
+    { en: "PHOENICIA", es: "FENICIA", lat: 33.60, lng: 35.05, size: 10, color: [100, 90, 80] },
+    { en: "IDUMEA", es: "IDUMEA", lat: 31.20, lng: 34.70, size: 10, color: [100, 90, 80] },
+    { en: "EGYPT", es: "EGIPTO", lat: 30.40, lng: 31.30, size: 13, color: [100, 90, 80] },
+    { en: "SINAI", es: "SINAÍ", lat: 30.00, lng: 33.50, size: 10, color: [100, 90, 80] },
   ];
 
   function drawGeoLabels() {
@@ -514,12 +514,50 @@ async function initMap() {
         );
       }
 
-      // City name label — dark text [40,25,35] with white halo [255,255,255,220]
-      // font "Avenir Next LT Pro", yoffset positive (label ABOVE marker)
-      if (isVisible && (city.significance !== "minor" || view.zoom > 8)) {
+      // City name label — with per-city offsets to avoid overlaps
+      if (isVisible && (city.significance !== "minor" || view.zoom > 9)) {
         const labelText = showBiblicalNames
           ? (cityText(city.id, "biblicalName") || city.biblicalName)
           : (cityText(city.id, "modernName") || city.modernName);
+
+        // Per-city label placement to prevent overlapping
+        const labelOffsets = {
+          // Galilee cluster — spread labels in different directions
+          "capernaum":         { x: 0,   y: size/2 + 8 },     // above (default)
+          "sea-of-galilee":    { x: -45, y: -5 },              // left
+          "mount-of-beatitudes": { x: -50, y: 0 },             // left
+          "bethsaida":         { x: 30,  y: size/2 + 6 },      // above-right
+          "chorazin":          { x: 30,  y: -5 },              // right
+          "magdala":           { x: -35, y: -5 },              // left
+          "nazareth":          { x: -35, y: 0 },               // left
+          "mount-tabor":       { x: -40, y: -5 },              // left
+          "nain":              { x: -25, y: 0 },               // left
+          "gadara":            { x: 30,  y: 0 },               // right
+          // Tyre/Sidon — spread apart
+          "tyre":              { x: -30, y: 0 },               // left
+          "sidon":             { x: -30, y: 0 },               // left
+          "caesarea-philippi":  { x: 35,  y: size/2 + 6 },     // above-right
+          // Jerusalem cluster — careful placement
+          "jerusalem":         { x: -40, y: 0 },               // left
+          "bethany":           { x: 30,  y: -8 },              // right-below
+          "mount-of-olives":   { x: 35,  y: size/2 + 6 },     // above-right
+          "bethlehem":         { x: -40, y: -5 },              // left
+          "wilderness-of-judea": { x: 0, y: -(size/2 + 8) },  // below
+          "jericho":           { x: 30,  y: 0 },               // right
+          // Jordan area
+          "bethany-beyond-jordan": { x: 40, y: 0 },            // right
+          "sychar":            { x: -30, y: 0 },               // left
+          "perea":             { x: 30,  y: 0 },               // right
+          // Others
+          "emmaus":            { x: -30, y: 0 },               // left
+          "egypt":             { x: 0,   y: -(size/2 + 8) },   // below
+          "decapolis":         { x: 30,  y: 0 },               // right
+          "cana":              { x: -30, y: size/2 + 6 },      // above-left
+        };
+
+        const offsets = labelOffsets[city.id] || { x: 0, y: size/2 + 8 };
+        const hAlign = offsets.x < -10 ? "right" : offsets.x > 10 ? "left" : "center";
+
         labelLayer.add(
           new Graphic({
             geometry: point,
@@ -533,7 +571,9 @@ async function initMap() {
                 family: "Avenir Next LT Pro",
                 weight: city.significance === "major" ? "bold" : "normal",
               },
-              yoffset: size / 2 + 8,
+              xoffset: offsets.x,
+              yoffset: offsets.y,
+              horizontalAlignment: hAlign,
             }),
             attributes: { cityId: city.id, type: "label" },
           })
