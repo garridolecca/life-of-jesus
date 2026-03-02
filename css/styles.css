@@ -1005,6 +1005,32 @@ calcite-shell {
   flex-shrink: 0;
 }
 
+.donate-paypal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  background: #0070BA;
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  margin-top: 10px;
+}
+
+.donate-paypal-btn:hover {
+  background: #005ea6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 112, 186, 0.3);
+}
+
+.paypal-icon {
+  flex-shrink: 0;
+}
+
 .donate-qr-section {
   margin-top: 1.5rem;
 }
