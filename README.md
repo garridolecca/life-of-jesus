@@ -40,7 +40,7 @@ The map organizes Jesus's life into four phases, each with its own color-coded r
 - **[ArcGIS Maps SDK for JavaScript 5.0](https://developers.arcgis.com/javascript/)** — map rendering, geospatial graphics, markers, polylines, text symbols
 - **[Calcite Design System](https://developers.arcgis.com/calcite-design-system/)** — UI shell and layout components
 - **Vanilla JavaScript (ES Modules)** — zero framework dependencies, no build step
-- **[CartoDB Positron](https://carto.com/basemaps/)** — dark basemap tiles (optional ArcGIS basemap with API key)
+- **Esri World Light Gray Canvas** — basemap tiles, no API key required (optional ArcGIS basemap with API key)
 - **CSS3 Custom Properties** — full theme system with glass-morphism effects
 - **Google Fonts** — Cinzel (display) + Inter (body)
 
@@ -74,7 +74,7 @@ npx http-server -p 8080
 
 ## Optional: ArcGIS API Key
 
-The app works without an API key using CartoDB tiles. For the premium ArcGIS "Human Geography" basemap, add your key at the top of `js/app.js`:
+The app works without an API key using Esri World Light Gray Canvas tiles. For the premium ArcGIS "Human Geography" basemap, add your key at the top of `js/app.js`:
 
 ```js
 const ARCGIS_API_KEY = "YOUR_KEY_HERE";
